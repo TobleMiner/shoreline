@@ -150,6 +150,7 @@ int main(int argc, char** argv) {
 
 		if(ring_available(ring)) {
 			fprintf(stderr, "There should be no more bytes available but there were (len %zu)\n", len);
+			goto fail_ring;
 		}
 
 		printf("Actual: %s\n", strbuff);
@@ -190,6 +191,7 @@ int main(int argc, char** argv) {
 
 		if(ring_available(ring)) {
 			fprintf(stderr, "There should be no more bytes available but there were (len %zu)\n", len);
+			goto fail_ring;
 		}
 
 		printf("Round %d (memcmp) passed with length %zu\n", i, len);
