@@ -218,7 +218,7 @@ listen:
 
 				}
 
-				ifnet_skip_whitespace(ring);
+				net_skip_whitespace(ring);
 			}
 		}
 	}
