@@ -8,6 +8,8 @@
 
 #define RING_SIZE 256
 
+char* rand_chars = "0123456789abcdef";
+
 void show_ring_stats(struct ring* ring) {
 	printf("Free bytes: %zu\n", ring_free_space(ring));
 	printf("Free (contiguous) bytes: %zu\n", ring_free_space_contig(ring));
@@ -128,14 +130,19 @@ int main(int argc, char** argv) {
 */
 	char refbuff[RING_SIZE];
 	for(i = 0; i < 1000; i++) {
+		memset(refbuff, '?', RING_SIZE);
 		size_t len = rand() % RING_SIZE;
 		for(j = 0; j < len; j++) {
-			refbuff[j] = rand() % 256;
+			refbuff[j] = rand_chars[rand() % strlen(rand_chars)];
 		}
+		if(len > 0)
+			refbuff[len - 1] = 0;
+
 		if((err = ring_write(ring, refbuff, len))) {
 			fprintf(stderr, "Write failed, len %zu, %s\n", len, strerror(-err));
 			goto fail_ring;
 		}
+
 		if((err = ring_read(ring, strbuff, len))) {
 			fprintf(stderr, "Read failed, len %zu, %s\n", len, strerror(-err));
 			goto fail_ring;
@@ -145,11 +152,47 @@ int main(int argc, char** argv) {
 			fprintf(stderr, "There should be no more bytes available but there were (len %zu)\n", len);
 		}
 
-		if(strncmp(refbuff, strbuff, len)) {
+		printf("Actual: %s\n", strbuff);
+		printf("Ref:    %s\n", refbuff);
+
+		if(memcmp(refbuff, strbuff, len) != 0) {
 			fprintf(stderr, "Cmp failed, len %zu\n", len);
 			goto fail_ring;
 		}
+
 		printf("Round %d passed with length %zu\n", i, len);
+	}
+
+
+	for(i = 0; i < 1000; i++) {
+		memset(refbuff, '?', RING_SIZE);
+		size_t len = rand() % RING_SIZE;
+		for(j = 0; j < len; j++) {
+			refbuff[j] = rand_chars[rand() % strlen(rand_chars)];
+		}
+		if(len > 0)
+			refbuff[len - 1] = 0;
+
+		if((err = ring_write(ring, refbuff, len))) {
+			fprintf(stderr, "Write failed, len %zu, %s\n", len, strerror(-err));
+			goto fail_ring;
+		}
+
+		if(len != ring_available(ring)) {
+			fprintf(stderr, "Wrong number of bytes available\n");
+			goto fail_ring;
+		}
+
+		if(ring_memcmp(ring, refbuff, ring_available(ring), NULL)) {
+			fprintf(stderr, "Memcmp failed, len %zu\n", len);
+			goto fail_ring;
+		}
+
+		if(ring_available(ring)) {
+			fprintf(stderr, "There should be no more bytes available but there were (len %zu)\n", len);
+		}
+
+		printf("Round %d (memcmp) passed with length %zu\n", i, len);
 	}
 
 	printf("All tests passed!\n");
