@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <pthread.h>
 
+#include "framebuffer.h"
+
 enum {
 	NET_STATE_IDLE,
 	NET_STATE_LISTEN,
@@ -23,6 +25,7 @@ struct net {
 
 struct net_threadargs {
 	struct net* net;
+	struct fb* fb;
 }
 
 #endif

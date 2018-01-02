@@ -1,14 +1,18 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <errno.h>
 
 #include "network.h"
+#include "ring.h"
+#include "framebuffer.h"
 
 #define RING_SIZE 65536
 #define STR_SIZE 16
 
 static int one = 1;
 
-int net_alloc(struct net** network) {
+int net_alloc(struct net** network, struct fb* fb) {
 	int err = 0;
 	struct net* = malloc(sizeof(struct net));
 	if(!net) {
@@ -17,6 +21,7 @@ int net_alloc(struct net** network) {
 	}
 
 	net->state = NET_STATE_IDLE;
+	net->fb = fb;
 
 	*network = net;
 
@@ -32,24 +37,123 @@ void net_free(struct* net) {
 }
 
 
+void net_shutdown(struct net* net) {
+	net->state = NET_STATE_SHUTDOWN;
+	close(net->socket);
+	shutdown(net->socket, SHUT_RDWR);
+}
+
+static int net_is_whitespace(char c) {
+	switch(c) {
+		case ' ':
+		case '\n':
+		case '\r':
+		case '\t':
+			return 1;
+	}
+	return 0;
+}
+
+static int net_skip_whitespace(struct ring* ring) {
+	int err, cnt = 0;
+	char c;
+	while(ring_available(ring)) {
+		if((err = ring_peek(ring, &c, 1))) {
+			fprintf(stderr, "Failed to read from ring buffer\n");
+			break;
+		}
+		if(!net_is_whitespace(c)) {
+			goto done;
+		}
+		ring_advance_read(ring, 1);
+		cnt++;
+	}
+	err = -1;
+	return err;
+done:
+	return cnt;
+}
+
+static off_t net_next_whitespace(struct ring* ring) {
+	off_t offset = 0;
+	char c, *read_before = ring->ptr_read;
+	int err;
+	while(ring_available(ring)) {
+		if((err = ring_read(ring, &c, 1))) {
+			fprintf(stderr, "Failed to read from ring buffer\n");
+			goto fail;
+		}
+		if(net_is_whitespace(c)) {
+			goto done;
+		}
+		offset++;
+	}
+	err = -1; // No next whitespace found
+	goto fail;
+
+done:
+	ring->ptr_read = read_before;
+	return offset;
+fail:
+	ring->ptr_read = read_before;
+	return err;
+}
+
+static uint32_t net_str_to_uint32_10(struct ring* ring, ssize_t len) {
+	uint32_t val = 0;
+	int radix;
+	char c;
+	for(radix = 0; radix < len; radix++) {
+		ring_read(ring, &c, 1);
+		val = val * 10 + (c - '0');
+	}
+	return val;
+}
+
+// Seperate implementation to keep performance high
+static uint32_t net_str_to_uint32_16(struct* ring, ssize_t len) {
+	uint32_t val = 0;
+	char c;
+	int radix, lower;
+	for(radix = 0; radix < len; radix++) {
+		// Could be replaced by a left shift
+		val *= 16;
+		ring_read(ring, &c, 1);
+		lower = tolower(c);
+		if(c >= 'a') {
+			val += lower - 'a';
+		} else {
+			val += lower - '0';
+		}
+	}
+	return val;
+}
+
+
 static void* net_listen_thread(void* args) {
 	int err, socket;
+	unsigned int x, y;
+	uint32_t color;
 	struct net_threadargs threadargs = args;
 	struct net* net = args->net;
+	struct fb_size fbsize = net->fb->get_size();
+	union fb_pixel pixel;
+	off_t offset;
 
-	ssize_t read_len, max_read;
+	ssize_t read_len;
+	char* last_cmd;
 	/*
 		A small ring buffer (64kB * 64k connections = ~4GB at max) to prevent memmoves.
 		Using a ring buffer prevents us from having to memmove but we do have to handle
 		Wrap arounds. This means that we can not use functions like strncmp safely without
 		checking for wraparounds
 	*/
-	char* ring[RING_SIZE];
-	char* ptr_read = ring, *ptr_parse;
-	char* ptr_write = ring;
-	// Use only if there is a wrap within next n bytes
-	char* str_store[STR_SIZE];
-	unsigned int str_len = 0;
+	struct ring* ring;
+
+	if((err = ring_alloc(&ring, RING_SIZE)) {
+		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
+		goto fail;
+	}
 
 listen:
 	while(net->state != NET_STATE_SHUTDOWN) {
@@ -66,49 +170,63 @@ listen:
 				max_read = ptr_read - ptr_write; // Don't kill data we haven't read yet
 			}
 			// FIXME: If data is badly aligned we might have very small reads every second read or so
-			read_len = read(socket, ptr_write, max_read);
+			read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
 			if(read_len < 0) {
 				err = -errno;
 				fprintf("Client socket failed %d => %s\n", errno, strerror(errno));
 				goto fail_socket;
 			}
+			ring_advance_write(ring, read_len);
 
-			if(read_len)
-			// Update write poiter
-			if(ptr_write + read_len < ring + RING_SIZE) {
-				ptr_write += read_len;
-			} else {
-				ptr_write = ring;
-			}
+			while(ring_available(ring)) {
+				last_cmd = ring->ptr_read;
 
-			// Parse data in ring buffer (TODO: Maybe we could do this async, too?)
-			ptr_parse = ptr_read;
-			// We should always be at the start of a command
-
-			if(ptr_parse + 4 < ptr_write) { // Could be SIZE
-				if(ptr_parse + 4 < ring + RING_SIZE) {
-					// Easy, we can strncmp
-					if(strncmp("SIZE", ptr_parse, strlen("SIZE")) && strncmp("size", ptr_parse, strlen("size"))) {
-						goto check_px;
+				if(!ring_memcmp(ring, "PX", sizeof("PX"), NULL)) {
+					if((err = net_skip_whitespace(ring)) < 0) {
+						fprintf(stderr, "No whitespace after PX cmd");
+						goto fail_socket;
 					}
+					if((offset = net_next_whitespace(ring)) < 0) {
+						fprintf(stderr, "No more whitespace found");
+						goto fail_socket;
+					}
+					x = net_str_to_uint32_10(ring, offset);
+					if((err = net_skip_whitespace(ring)) < 0) {
+						fprintf(stderr, "No whitespace after X coordinate");
+						goto fail_socket;
+					}
+					if((offset = net_next_whitespace(ring)) < 0) {
+						fprintf(stderr, "No more whitespace found");
+						goto fail_socket;
+					}
+					y = net_str_to_uint32_10(ring, offset);
+					if((err = net_skip_whitespace(ring)) < 0) {
+						fprintf(stderr, "No whitespace after Y coordinate");
+						goto fail_socket;
+					}
+					if((offset = net_next_whitespace(ring)) < 0) {
+						fprintf(stderr, "No more whitespace found");
+						goto fail_socket;
+					}
+					pixel.rgba = net_str_to_uint32_16(ring, offset);
+					if(x < fbsize.width && y < fbsize.height) {
+						fb_set_pixel(fb, x, y, &pixel);
+					}
+				} else if(!ring_memcmp(ring, "SIZE", sizeof("SIZE"), NULL)) {
+					printf("Size requested\n");
 				} else {
-					// We need to copy (but this should be quite a rare event) :(
-					memcpy(str_store, ptr_parse, ring + RING_SIZE - str_store)
-				}
-			}
-check_px:
 
-			while(ptr_parse != ptr_write) {
-				if(str_len >= STR_SIZE) {
-					fprintf("Command string too long %d => %s\n", errno, strerror(errno));
 				}
-				str_store[str_len++] = *ptr_parse;
-				ptr_parse++;
+
+				ifnet_skip_whitespace(ring);
 			}
 		}
 	}
 
+	return NULL;
+
 fail:
+	net_shutdown(net);
 	return NULL;
 
 fail_socket:
@@ -126,10 +244,7 @@ static void net_listen_join_all(struct net* net) {
 	}
 }
 
-void net_shutdown(struct net* net) {
-	net->state = NET_STATE_SHUTDOWN;
-	close(net->socket);
-	shutdown(net->socket, SHUT_RDWR);
+void net_join(struct net* net) {
 	net_listen_join_all(net);
 	net->state = NET_STATE_EXIT;
 }
