@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <ctype.h>
 #include <fcntl.h>
+#include <signal.h>
 
 #include "network.h"
 #include "ring.h"
@@ -50,6 +51,10 @@ void net_free(struct net* net) {
 void net_shutdown(struct net* net) {
 	net->state = NET_STATE_SHUTDOWN;
 	fcntl(net->socket, F_SETFL, O_NONBLOCK);
+	int i = net->num_threads;
+	while(i-- > 0) {
+		pthread_kill(net->threads[i], SIGINT);
+	}
 	close(net->socket);
 }
 
@@ -219,6 +224,7 @@ recv:
 						goto recv_more;
 					}
 					pixel.rgba = net_str_to_uint32_16(ring, offset);
+//					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 					if(x < fbsize.width && y < fbsize.height) {
 						fb_set_pixel(fb, x, y, &pixel);
 					}
