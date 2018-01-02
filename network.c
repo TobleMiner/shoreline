@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <assert.h>
 #include <ctype.h>
+#include <fcntl.h>
 
 #include "network.h"
 #include "ring.h"
@@ -47,8 +48,8 @@ void net_free(struct net* net) {
 
 void net_shutdown(struct net* net) {
 	net->state = NET_STATE_SHUTDOWN;
+	fcntl(net->socket, F_SETFL, O_NONBLOCK);
 	close(net->socket);
-	shutdown(net->socket, SHUT_RDWR);
 }
 
 static int net_is_whitespace(char c) {
@@ -249,6 +250,7 @@ static void net_listen_join_all(struct net* net) {
 
 void net_join(struct net* net) {
 	net_listen_join_all(net);
+	shutdown(net->socket, SHUT_RDWR);
 	net->state = NET_STATE_EXIT;
 }
 
