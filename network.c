@@ -169,7 +169,8 @@ listen:
 		if(socket < 0) {
 			err = -errno;
 			fprintf(stderr, "Got error %d => %s, continuing\n", errno, strerror(errno));
-			continue;
+			goto fail;
+//			continue;
 		}
 		// In theory we should create a new thread right now but for now we will just continue in the current thread
 		while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
@@ -241,7 +242,7 @@ fail_socket:
 
 static void net_listen_join_all(struct net* net) {
 	int i = net->num_threads;
-	while(i-- >= 0) {
+	while(i-- > 0) {
 		pthread_join(net->threads[i], NULL);
 	}
 }
