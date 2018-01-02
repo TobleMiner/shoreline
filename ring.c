@@ -160,7 +160,6 @@ void ring_advance_write(struct ring* ring, off_t offset) {
 */
 int ring_memcmp(struct ring* ring, char* ref, unsigned int len, char** next_pos) {
 	size_t avail_contig;
-	int ret;
 
 	if(ring_available(ring) < len) {
 		return -EINVAL;
@@ -170,24 +169,28 @@ int ring_memcmp(struct ring* ring, char* ref, unsigned int len, char** next_pos)
 
 	if(avail_contig >= len) {
 		// We are lucky
-		ret = !!memcmp(ring->ptr_read, ref, len);
+		if(memcmp(ring->ptr_read, ref, len)) {
+			return 1;
+		}
 		if(next_pos) {
 			*next_pos = ring_next(ring, ring->ptr_read + len - 1);
 		} else {
 			ring_advance_read(ring, len);
 		}
-		return ret;
+		return 0;
 	}
 
 
 	// We (may) need to perform two memcmps
-	ret = memcmp(ring->ptr_read, ref, avail_contig) || !!memcmp(ring->data, ref + avail_contig, len - avail_contig);
+	if(memcmp(ring->ptr_read, ref, avail_contig) || memcmp(ring->data, ref + avail_contig, len - avail_contig)) {
+		return 1;
+	}
 	if(next_pos) {
 		*next_pos = ring->data + len - avail_contig;
 	} else {
 		ring_advance_read(ring, len);
 	}
-	return ret;
+	return 0;
 }
 
 
