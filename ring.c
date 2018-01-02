@@ -82,6 +82,25 @@ char* ring_next(struct ring* ring, char* ptr) {
 	return ring->data;
 }
 
+int ring_peek(struct ring* ring, char* data, size_t len) {
+	size_t avail_contig;
+
+	if(ring_available(ring) < len) {
+		return -EINVAL;
+	}
+
+	avail_contig = ring_available_contig(ring);
+
+	if(avail_contig >= len) {
+		memcpy(data, ring->ptr_read, len);
+	} else {
+		memcpy(data, ring->ptr_read, avail_contig);
+		memcpy(data + avail_contig, ring->data, len - avail_contig);
+	}
+
+	return 0;
+}
+
 // Read from this ring buffer
 int ring_read(struct ring* ring, char* data, size_t len) {
 	size_t avail_contig;
@@ -192,5 +211,3 @@ int ring_memcmp(struct ring* ring, char* ref, unsigned int len, char** next_pos)
 	}
 	return 0;
 }
-
-
