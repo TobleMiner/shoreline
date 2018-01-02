@@ -40,7 +40,7 @@ void fb_free(struct fb* fb) {
 
 
 
-void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, struct fb_pixel* pixel) {
+void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
 	struct fb_pixel* target;
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
@@ -55,13 +55,13 @@ void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red
 	assert(y < fb->size.height);
 
 	target = &(fb->pixels[y * fb->size.width + x]);
-	target->red = red;
-	target->green = green;
-	target->blue = blue;
+	target->color.red = red;
+	target->color.green = green;
+	target->color.blue = blue;
 }
 
 // It might be a good idea to offer a variant returning a pointer to avoid unnecessary copies
-struct fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
+union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
 
