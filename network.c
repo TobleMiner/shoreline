@@ -72,15 +72,12 @@ static int net_is_whitespace(char c) {
 static int net_skip_whitespace(struct ring* ring) {
 	int err, cnt = 0;
 	char c;
-	while(ring_available(ring)) {
-		if((err = ring_peek(ring, &c, 1))) {
-			fprintf(stderr, "Failed to read from ring buffer\n");
-			break;
-		}
+	while(ring_any_available(ring)) {
+		c = ring_peek_one(ring);
 		if(!net_is_whitespace(c)) {
 			goto done;
 		}
-		ring_advance_read(ring, 1);
+		ring_inc_read(ring);
 		cnt++;
 	}
 	err = -1;
@@ -93,11 +90,8 @@ static off_t net_next_whitespace(struct ring* ring) {
 	off_t offset = 0;
 	char c, *read_before = ring->ptr_read;
 	int err;
-	while(ring_available(ring)) {
-		if((err = ring_read(ring, &c, 1))) {
-			fprintf(stderr, "Failed to read from ring buffer\n");
-			goto fail;
-		}
+	while(ring_any_available(ring)) {
+		c = ring_read_one(ring);
 		if(net_is_whitespace(c)) {
 			goto done;
 		}
@@ -119,7 +113,7 @@ static uint32_t net_str_to_uint32_10(struct ring* ring, ssize_t len) {
 	int radix;
 	char c;
 	for(radix = 0; radix < len; radix++) {
-		ring_read(ring, &c, 1);
+		c = ring_read_one(ring);
 		val = val * 10 + (c - '0');
 	}
 	return val;
@@ -133,7 +127,7 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 	for(radix = 0; radix < len; radix++) {
 		// Could be replaced by a left shift
 		val *= 16;
-		ring_read(ring, &c, 1);
+		c = ring_read_one(ring);
 		lower = tolower(c);
 		if(c >= 'a') {
 			val += lower - 'a' + 10;
@@ -193,7 +187,7 @@ recv:
 //			printf("Read %zd bytes\n", read_len);
 			ring_advance_write(ring, read_len);
 
-			while(ring_available(ring)) {
+			while(ring_any_available(ring)) {
 				last_cmd = ring->ptr_read;
 
 				if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
