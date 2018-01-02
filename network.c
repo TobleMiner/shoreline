@@ -18,6 +18,7 @@
 
 #define RING_SIZE 65536
 #define CONNECTION_QUEUE_SIZE 16
+#define THREAD_NAME_MAX 16
 
 static int one = 1;
 
@@ -268,6 +269,7 @@ void net_join(struct net* net) {
 
 int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr) {
 	int err = 0, i;
+	char threadname[THREAD_NAME_MAX];
 
 	assert(num_threads > 0);
 
@@ -323,6 +325,8 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 			fprintf(stderr, "Failed to create pthread %d\n", net->num_threads);
 			goto fail_pthread_create;
 		}
+		snprintf(threadname, THREAD_NAME_MAX, "network %d", net->num_threads);
+		pthread_setname_np(net->threads[net->num_threads], threadname);
 	}
 
 	return 0;
