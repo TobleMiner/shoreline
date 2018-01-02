@@ -4,18 +4,18 @@
 struct ring {
 	size_t size;
 	char* data;
-	char* ptr_read, ptr_write;
-}
+	char* ptr_read, *ptr_write;
+};
 
 int ring_alloc(struct ring** ret, size_t size);
 void ring_free(struct ring* ring);
 
 
-inline size_t ring_available(struct ring* ring);
-inline size_t ring_available_contig(struct ring* ring);
-inline size_t ring_free_space(struct ring* ring);
-inline size_t ring_free_space_contig(struct ring* ring);
-inline char* ring_next(struct ring* ring, char* ptr);
+size_t ring_available(struct ring* ring);
+size_t ring_available_contig(struct ring* ring);
+size_t ring_free_space(struct ring* ring);
+size_t ring_free_space_contig(struct ring* ring);
+char* ring_next(struct ring* ring, char* ptr);
 
 int ring_read(struct ring* ring, char* data, size_t len);
 int ring_write(struct ring* ring, char* data, size_t len);

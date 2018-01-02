@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
+#include <errno.h>
 
 #include "ring.h"
 
@@ -22,6 +24,8 @@ int ring_alloc(struct ring** ret, size_t size) {
 	ring->ptr_write = ring->data;
 	ring->size = size;
 
+	*ret = ring;
+
 	return 0;
 
 fail_ring:
@@ -37,31 +41,31 @@ void ring_free(struct ring* ring) {
 
 
 // Number of bytes that can be read from ringbuffer
-inline size_t ring_available(struct ring* ring) {
-	if(ring->ptr_write > ring->ptr_read) {
+size_t ring_available(struct ring* ring) {
+	if(ring->ptr_write >= ring->ptr_read) {
 		return ring->ptr_write - ring->ptr_read;
 	}
 	return ring->size - (ring->ptr_read - ring->ptr_write);
 }
 
 // Number of virtually contiguous bytes that can be read from ringbuffer
-inline size_t ring_available_contig(struct ring* ring) {
-	if(ring->ptr_write > ring->ptr_read) {
+size_t ring_available_contig(struct ring* ring) {
+	if(ring->ptr_write >= ring->ptr_read) {
 		return ring->ptr_write - ring->ptr_read;
 	}
 	return ring->size - (ring->ptr_read - ring->data);
 }
 
 // Number of free bytes
-inline size_t ring_free_space(struct ring* ring) {
+size_t ring_free_space(struct ring* ring) {
 	if(ring->ptr_read > ring->ptr_write) {
-		return ring->ptr_read - ring->ptr_write;
+		return ring->ptr_read - ring->ptr_write - 1;
 	}
-	return ring->size - (ring->ptr_write - ring->ptr_read);
+	return ring->size - (ring->ptr_write - ring->ptr_read) - 1;
 }
 
-// Number of contigous free bytes after ring->write_ptr
-inline size_t ring_free_space_contig(struct ring* ring) {
+// Number of contiguous free bytes after ring->write_ptr
+size_t ring_free_space_contig(struct ring* ring) {
 	if(ring->ptr_read > ring->ptr_write) {
 		return ring->ptr_read - ring->ptr_write;
 	}
@@ -70,7 +74,7 @@ inline size_t ring_free_space_contig(struct ring* ring) {
 
 
 // Pointer to next byte to read from ringbuffer
-inline char* ring_next(struct ring* ring, char* ptr) {
+char* ring_next(struct ring* ring, char* ptr) {
 	if(ptr < ring->data + ring->size - 1) {
 		return ptr + 1;
 	}
@@ -89,7 +93,7 @@ int ring_read(struct ring* ring, char* data, size_t len) {
 
 	if(avail_contig >= len) {
 		memcpy(data, ring->ptr_read, len);
-		ring->ptr_read = ring_next(ring->ptr_read + len - 1);
+		ring->ptr_read = ring_next(ring, ring->ptr_read + len - 1);
 	} else {
 		memcpy(data, ring->ptr_read, avail_contig);
 		memcpy(data + avail_contig, ring->data, len - avail_contig);
@@ -109,9 +113,9 @@ int ring_write(struct ring* ring, char* data, size_t len) {
 
 	free_contig = ring_free_space_contig(ring);
 
-	if(avail_contig => len) {
+	if(free_contig >= len) {
 		memcpy(ring->ptr_write, data, len);
-		ring->ptr_write = ring_next(ring->ptr_write + len - 1);
+		ring->ptr_write = ring_next(ring, ring->ptr_write + len - 1);
 	} else {
 		memcpy(ring->ptr_write, data, free_contig);
 		memcpy(ring->data, data + free_contig, len - free_contig);
@@ -127,7 +131,7 @@ int ring_write(struct ring* ring, char* data, size_t len) {
 	= 0 match
 	> 0 no match
 */
-int ring_strncmp(struct ring*, char* ref, unsigned int len, char** next_pos) {
+int ring_strncmp(struct ring* ring, char* ref, unsigned int len, char** next_pos) {
 	size_t avail_contig;
 
 	if(ring_available(ring) < len) {
@@ -139,7 +143,7 @@ int ring_strncmp(struct ring*, char* ref, unsigned int len, char** next_pos) {
 	if(avail_contig >= len) {
 		// We are lucky
 		if(next_pos) {
-			*next_pos = ring_next(ring->ptr_read + len - 1)
+			*next_pos = ring_next(ring, ring->ptr_read + len - 1);
 		}
 		return !!strncmp(ring->ptr_read, ref, len);
 	}
