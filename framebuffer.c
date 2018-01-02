@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <assert.h>
+#include <string.h>
 
 #include "framebuffer.h"
 
@@ -18,7 +19,7 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	fb->size.width = width;
 	fb->size.height = height;
 
-	fb->pixels = malloc(width * height * sizeof(struct fb_pixel));
+	fb->pixels = malloc(width * height * sizeof(union fb_pixel));
 	if(!fb->pixels) {
 		err = -ENOMEM;
 		goto fail_fb;
@@ -41,7 +42,7 @@ void fb_free(struct fb* fb) {
 
 
 void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
-	struct fb_pixel* target;
+	union fb_pixel* target;
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
 
@@ -50,7 +51,7 @@ void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel*
 }
 
 void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red, uint8_t green, uint8_t blue) {
-	struct fb_pixel* target;
+	union fb_pixel* target;
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
 

@@ -2,6 +2,14 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <pthread.h>
+#include <sys/types.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+#include <unistd.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <ctype.h>
 
 #include "network.h"
 #include "ring.h"
@@ -14,7 +22,7 @@ static int one = 1;
 
 int net_alloc(struct net** network, struct fb* fb) {
 	int err = 0;
-	struct net* = malloc(sizeof(struct net));
+	struct net* net = malloc(sizeof(struct net));
 	if(!net) {
 		err = -ENOMEM;
 		goto fail;
@@ -31,7 +39,7 @@ fail:
 	return err;
 }
 
-void net_free(struct* net) {
+void net_free(struct net* net) {
 	assert(net->state == NET_STATE_EXIT);
 	free(net);
 }
@@ -111,7 +119,7 @@ static uint32_t net_str_to_uint32_10(struct ring* ring, ssize_t len) {
 }
 
 // Separate implementation to keep performance high
-static uint32_t net_str_to_uint32_16(struct* ring, ssize_t len) {
+static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 	uint32_t val = 0;
 	char c;
 	int radix, lower;
@@ -133,10 +141,10 @@ static uint32_t net_str_to_uint32_16(struct* ring, ssize_t len) {
 static void* net_listen_thread(void* args) {
 	int err, socket;
 	unsigned int x, y;
-	uint32_t color;
-	struct net_threadargs threadargs = args;
-	struct net* net = args->net;
-	struct fb_size fbsize = net->fb->get_size();
+	struct net_threadargs* threadargs = args;
+	struct net* net = threadargs->net;
+	struct fb* fb = net->fb;
+	struct fb_size fbsize = fb_get_size(fb);
 	union fb_pixel pixel;
 	off_t offset;
 
@@ -150,7 +158,7 @@ static void* net_listen_thread(void* args) {
 	*/
 	struct ring* ring;
 
-	if((err = ring_alloc(&ring, RING_SIZE)) {
+	if((err = ring_alloc(&ring, RING_SIZE))) {
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
 		goto fail;
 	}
@@ -160,20 +168,16 @@ listen:
 		socket = accept(net->socket, NULL, NULL);
 		if(socket < 0) {
 			err = -errno;
-			fprintf("Got error %d => %s, continuing\n", errno, strerror(errno));
+			fprintf(stderr, "Got error %d => %s, continuing\n", errno, strerror(errno));
 			continue;
 		}
 		// In theory we should create a new thread right now but for now we will just continue in the current thread
 		while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
-			max_read = RING_SIZE;
-			if(ptr_read > ptr_write) {
-				max_read = ptr_read - ptr_write; // Don't kill data we haven't read yet
-			}
 			// FIXME: If data is badly aligned we might have very small reads every second read or so
 			read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
 			if(read_len < 0) {
 				err = -errno;
-				fprintf("Client socket failed %d => %s\n", errno, strerror(errno));
+				fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
 				goto fail_socket;
 			}
 			ring_advance_write(ring, read_len);
@@ -236,11 +240,9 @@ fail_socket:
 }
 
 static void net_listen_join_all(struct net* net) {
-	assert(net->state == NET_STATE_SHUTDOWN);
-
 	int i = net->num_threads;
 	while(i-- >= 0) {
-		pthread_join(net->threads[thread_index]);
+		pthread_join(net->threads[i], NULL);
 	}
 }
 
@@ -250,7 +252,7 @@ void net_join(struct net* net) {
 }
 
 int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr) {
-	int err = 0, i, thread_index;
+	int err = 0, i;
 
 	assert(num_threads > 0);
 
@@ -258,17 +260,17 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 	net->state = NET_STATE_LISTEN;
 
 	// Create socket
-	net->socket = socket(AF_INET, SOCKET_STREAM, 0);
+	net->socket = socket(AF_INET, SOCK_STREAM, 0);
 	if(net->socket < 0) {
 		fprintf(stderr, "Failed to create socket\n");
 		err = -errno;
 		goto fail;
 	}
-	setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
+	setsockopt(net->socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
 	// Start listening
 	if(bind(net->socket, (struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0) {
-		fprintf(stderr, "Failed to bind to %s:%hu\n", inet_ntoa(addr), ntohs(addr->port));
+		fprintf(stderr, "Failed to bind to %s:%hu\n", inet_ntoa(*((struct in_addr*)addr)), ntohs(addr->sin_port));
 		err = -errno;
 		goto fail_socket;
 	}

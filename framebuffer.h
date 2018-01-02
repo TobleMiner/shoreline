@@ -8,7 +8,7 @@
 struct fb_size {
 	unsigned int width;
 	unsigned int height;
-}
+};
 
 // RGBA32
 union fb_pixel {
@@ -24,7 +24,7 @@ union fb_pixel {
 struct fb {
 	struct fb_size size;
 	union fb_pixel* pixels;
-}
+};
 
 
 // Management
