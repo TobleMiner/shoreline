@@ -1,11 +1,11 @@
 CC=gcc
-CCFLAGS=-O3 -Wall
+CCFLAGS=-O0 -Wall -ggdb
 RM=rm -f
 
 all: clean test
 
 test:
-	$(CC) $(CCFLAGS) main.c -lpthread -o sturmflut
+	$(CC) $(CCFLAGS) ../../ring.c main.c -o test
 
 clean:
-	$(RM) sturmflut
+	$(RM) test
