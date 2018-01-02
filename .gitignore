@@ -5,3 +5,5 @@
 .gdb_history
 shoreline
 *.data
+*.s
+*.old
