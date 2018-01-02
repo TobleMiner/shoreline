@@ -173,6 +173,7 @@ listen:
 			goto fail;
 //			continue;
 		}
+		printf("Got a new connection\n");
 		// In theory we should create a new thread right now but for now we will just continue in the current thread
 		while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
 			// FIXME: If data is badly aligned we might have very small reads every second read or so
@@ -182,6 +183,7 @@ listen:
 				fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
 				goto fail_socket;
 			}
+			printf("Read %zd bytes\n", read_len);
 			ring_advance_write(ring, read_len);
 
 			while(ring_available(ring)) {
@@ -221,7 +223,10 @@ listen:
 				} else if(!ring_memcmp(ring, "SIZE", sizeof("SIZE"), NULL)) {
 					printf("Size requested\n");
 				} else {
-
+					if((offset = net_next_whitespace(ring)) >= 0) {
+						printf("Encountered unknown command\n");
+						ring_advance_read(ring, offset);
+					}
 				}
 
 				net_skip_whitespace(ring);
