@@ -130,7 +130,7 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 		ring_read(ring, &c, 1);
 		lower = tolower(c);
 		if(c >= 'a') {
-			val += lower - 'a';
+			val += lower - 'a' + 10;
 		} else {
 			val += lower - '0';
 		}
@@ -174,58 +174,61 @@ listen:
 //			continue;
 		}
 		printf("Got a new connection\n");
-		// In theory we should create a new thread right now but for now we will just continue in the current thread
+		// FIXME: In theory we should create a new thread right now but for now we will just continue in the current thread
+recv:
 		while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
 			// FIXME: If data is badly aligned we might have very small reads every second read or so
 			read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
-			if(read_len < 0) {
+			if(read_len <= 0) {
 				err = -errno;
 				fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
 				goto fail_socket;
 			}
-			printf("Read %zd bytes\n", read_len);
+//			printf("Read %zd bytes\n", read_len);
 			ring_advance_write(ring, read_len);
 
 			while(ring_available(ring)) {
 				last_cmd = ring->ptr_read;
 
-				if(!ring_memcmp(ring, "PX", sizeof("PX"), NULL)) {
+				if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
 					if((err = net_skip_whitespace(ring)) < 0) {
-						fprintf(stderr, "No whitespace after PX cmd");
-						goto fail_socket;
+//						fprintf(stderr, "No whitespace after PX cmd\n");
+						goto recv_more;
 					}
 					if((offset = net_next_whitespace(ring)) < 0) {
-						fprintf(stderr, "No more whitespace found");
-						goto fail_socket;
+//						fprintf(stderr, "No more whitespace found, missing X\n");
+						goto recv_more;
 					}
 					x = net_str_to_uint32_10(ring, offset);
 					if((err = net_skip_whitespace(ring)) < 0) {
-						fprintf(stderr, "No whitespace after X coordinate");
-						goto fail_socket;
+//						fprintf(stderr, "No whitespace after X coordinate\n");
+						goto recv_more;
 					}
 					if((offset = net_next_whitespace(ring)) < 0) {
-						fprintf(stderr, "No more whitespace found");
-						goto fail_socket;
+//						fprintf(stderr, "No more whitespace found, missing Y\n");
+						goto recv_more;
 					}
 					y = net_str_to_uint32_10(ring, offset);
 					if((err = net_skip_whitespace(ring)) < 0) {
-						fprintf(stderr, "No whitespace after Y coordinate");
-						goto fail_socket;
+//						fprintf(stderr, "No whitespace after Y coordinate\n");
+						goto recv_more;
 					}
 					if((offset = net_next_whitespace(ring)) < 0) {
-						fprintf(stderr, "No more whitespace found");
-						goto fail_socket;
+//						fprintf(stderr, "No more whitespace found, missing color\n");
+						goto recv_more;
 					}
 					pixel.rgba = net_str_to_uint32_16(ring, offset);
 					if(x < fbsize.width && y < fbsize.height) {
 						fb_set_pixel(fb, x, y, &pixel);
 					}
-				} else if(!ring_memcmp(ring, "SIZE", sizeof("SIZE"), NULL)) {
+				} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
 					printf("Size requested\n");
 				} else {
 					if((offset = net_next_whitespace(ring)) >= 0) {
 						printf("Encountered unknown command\n");
 						ring_advance_read(ring, offset);
+					} else {
+						goto recv;
 					}
 				}
 
@@ -244,6 +247,10 @@ fail_socket:
 	close(socket);
 	shutdown(socket, SHUT_RDWR);
 	goto listen;
+
+recv_more:
+	ring->ptr_read = last_cmd;
+	goto recv;
 }
 
 static void net_listen_join_all(struct net* net) {
