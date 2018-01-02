@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
+#include <assert.h>
 
 #include "ring.h"
 
@@ -124,15 +125,42 @@ int ring_write(struct ring* ring, char* data, size_t len) {
 	return 0;
 }
 
+void ring_advance_read(struct ring* ring, off_t offset) {
+	assert(offset >= 0);
+	assert(offset < ring->size);
+
+	if(offset) {
+		if(ring->ptr_read + offset < ring->data + ring->size) {
+			ring->ptr_read = ring_next(ring, ring->ptr_read + offset - 1);
+		} else {
+			ring->ptr_read = offset - ring->size + ring->ptr_read;
+		}
+	}
+}
+
+void ring_advance_write(struct ring* ring, off_t offset) {
+	assert(offset >= 0);
+	assert(offset < ring->size);
+
+	if(offset) {
+		if(ring->ptr_write + offset < ring->data + ring->size) {
+			ring->ptr_write = ring_next(ring, ring->ptr_write + offset - 1);
+		} else {
+			ring->ptr_write = offset - ring->size + ring->ptr_write;
+		}
+	}
+}
+
 /*
- Behaves totally different from strncmp!
+ Behaves totally different from memcmp!
  Return:
 	< 0 error (not enough data in buffer)
 	= 0 match
 	> 0 no match
 */
-int ring_strncmp(struct ring* ring, char* ref, unsigned int len, char** next_pos) {
+int ring_memcmp(struct ring* ring, char* ref, unsigned int len, char** next_pos) {
 	size_t avail_contig;
+	int ret;
 
 	if(ring_available(ring) < len) {
 		return -EINVAL;
@@ -142,21 +170,24 @@ int ring_strncmp(struct ring* ring, char* ref, unsigned int len, char** next_pos
 
 	if(avail_contig >= len) {
 		// We are lucky
+		ret = !!memcmp(ring->ptr_read, ref, len);
 		if(next_pos) {
 			*next_pos = ring_next(ring, ring->ptr_read + len - 1);
+		} else {
+			ring_advance_read(ring, len);
 		}
-		return !!strncmp(ring->ptr_read, ref, len);
+		return ret;
 	}
 
 
-	// We (may) need to perform two strncmps
-	if(strncmp(ring->ptr_read, ref, len)) {
-		return 1;
-	}
+	// We (may) need to perform two memcmps
+	ret = memcmp(ring->ptr_read, ref, avail_contig) || !!memcmp(ring->data, ref + avail_contig, len - avail_contig);
 	if(next_pos) {
 		*next_pos = ring->data + len - avail_contig;
+	} else {
+		ring_advance_read(ring, len);
 	}
-	return !!strncmp(ring->data, ref + avail_contig, len - avail_contig);
+	return ret;
 }
 
 

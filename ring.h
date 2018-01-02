@@ -19,8 +19,10 @@ char* ring_next(struct ring* ring, char* ptr);
 
 int ring_read(struct ring* ring, char* data, size_t len);
 int ring_write(struct ring* ring, char* data, size_t len);
+void ring_advance_read(struct ring* ring, off_t offset);
+void ring_advance_write(struct ring* ring, off_t offset);
 
 // Special zero-copy optimizations
-int ring_strncmp(struct ring*, char* ref, unsigned int len, char** next_pos);
+int ring_memcmp(struct ring*, char* ref, unsigned int len, char** next_pos);
 
 #endif
