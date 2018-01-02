@@ -17,7 +17,7 @@
 #include "framebuffer.h"
 
 #define RING_SIZE 65536
-#define STR_SIZE 16
+#define CONNECTION_QUEUE_SIZE 16
 
 static int one = 1;
 
@@ -277,6 +277,14 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 		err = -errno;
 		goto fail_socket;
 	}
+
+	if(listen(net->socket, CONNECTION_QUEUE_SIZE)) {
+		fprintf(stderr, "Failed to start listening: %d => %s\n", errno, strerror(errno));
+		err = -errno;
+		goto fail_socket;
+	}
+
+	printf("Listening on %s:%hu\n", inet_ntoa(*((struct in_addr*)(&addr->sin_addr))), ntohs(addr->sin_port));
 
 	// Allocate space for thread handles
 	net->threads = malloc(num_threads * sizeof(pthread_t));
