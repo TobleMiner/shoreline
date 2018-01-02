@@ -68,7 +68,7 @@ size_t ring_free_space(struct ring* ring) {
 // Number of contiguous free bytes after ring->write_ptr
 size_t ring_free_space_contig(struct ring* ring) {
 	if(ring->ptr_read > ring->ptr_write) {
-		return ring->ptr_read - ring->ptr_write;
+		return ring->ptr_read - ring->ptr_write - 1;
 	}
 	return ring->size - (ring->ptr_write - ring->data);
 }
@@ -146,7 +146,7 @@ int ring_write(struct ring* ring, char* data, size_t len) {
 
 void ring_advance_read(struct ring* ring, off_t offset) {
 	assert(offset >= 0);
-	assert(offset < ring->size);
+	assert(offset <= ring->size);
 
 	if(offset) {
 		if(ring->ptr_read + offset < ring->data + ring->size) {
@@ -159,7 +159,7 @@ void ring_advance_read(struct ring* ring, off_t offset) {
 
 void ring_advance_write(struct ring* ring, off_t offset) {
 	assert(offset >= 0);
-	assert(offset < ring->size);
+	assert(offset <= ring->size);
 
 	if(offset) {
 		if(ring->ptr_write + offset < ring->data + ring->size) {
