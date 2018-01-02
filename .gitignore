@@ -3,3 +3,4 @@
 *.elf
 *.so
 .gdb_history
+shoreline
