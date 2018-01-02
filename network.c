@@ -110,7 +110,7 @@ static uint32_t net_str_to_uint32_10(struct ring* ring, ssize_t len) {
 	return val;
 }
 
-// Seperate implementation to keep performance high
+// Separate implementation to keep performance high
 static uint32_t net_str_to_uint32_16(struct* ring, ssize_t len) {
 	uint32_t val = 0;
 	char c;
