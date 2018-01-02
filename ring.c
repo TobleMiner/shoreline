@@ -70,7 +70,7 @@ size_t ring_free_space_contig(struct ring* ring) {
 	if(ring->ptr_read > ring->ptr_write) {
 		return ring->ptr_read - ring->ptr_write - 1;
 	}
-	return ring->size - (ring->ptr_write - ring->data);
+	return ring->size - (ring->ptr_write - ring->data) - (ring->ptr_read == ring->data ? 1 : 0);
 }
 
 
