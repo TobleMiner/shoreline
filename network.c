@@ -24,6 +24,29 @@
 #define SIZE_INFO_MAX 32
 #define WHITESPACE_SEARCH_GARBAGE_THRESHOLD 32
 
+/* Theory Of Operation
+ * ===================
+ *
+ * Using net_alloc the caller grabs a net struct. After that
+ * he uses net_listen with the desired number of threads used
+ * for accepting connections.
+ *
+ * Each of the threads used for accepting connections starts
+ * another thread for each connection it accepted.
+ *
+ * The newly created thread then sets up a ring buffer to avoid
+ * memmoves while parsing and starts reading data to it.
+ * After receiving any number of bytes the thread tries to read
+ * a valid command verb from the current read position in the
+ * ring buffer. If that fails the thread tries to skip to the
+ * next whitespace-separated token and tries to parse it as a
+ * command verb. One a valid command verb is detected the
+ * parser tries to fetch all arguments required to form a
+ * complete command.
+ * If there are any required parts missing from a command the
+ * parser will assume that it has simply not been received yet
+ * and go back to reading from the socket.
+ */
 static int one = 1;
 
 int net_alloc(struct net** network, struct fb* fb, size_t ring_size) {
