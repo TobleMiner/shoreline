@@ -22,6 +22,7 @@
 #define CONNECTION_QUEUE_SIZE 16
 #define THREAD_NAME_MAX 16
 #define SIZE_INFO_MAX 32
+#define WHITESPACE_SEARCH_GARBAGE_THRESHOLD 32
 
 static int one = 1;
 
@@ -98,7 +99,10 @@ static off_t net_next_whitespace(struct ring* ring) {
 		if(net_is_whitespace(c)) {
 			goto done;
 		}
-		offset++;
+		if(offset++ >= WHITESPACE_SEARCH_GARBAGE_THRESHOLD) {
+			err = -EINVAL;
+			goto fail;
+		}
 	}
 	err = -1; // No next whitespace found
 	goto fail;
@@ -238,6 +242,10 @@ recv:
 					printf("Encountered unknown command\n");
 					ring_advance_read(ring, offset);
 				} else {
+					if(offset == -EINVAL) {
+						// We have a missbehaving client
+						goto fail_ring;
+					}
 					goto recv;
 				}
 			}
