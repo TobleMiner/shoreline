@@ -16,6 +16,8 @@
 #include "network.h"
 #include "ring.h"
 #include "framebuffer.h"
+#include "llist.h"
+#include "util.h"
 
 #define RING_SIZE 65536
 #define CONNECTION_QUEUE_SIZE 16
@@ -138,19 +140,22 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 	return val;
 }
 
-
-static void* net_listen_thread(void* args) {
-	int err, socket;
-	unsigned int x, y;
-	struct net_threadargs* threadargs = args;
+static void* net_connection_thread(void* args) {
+	struct net_connection_threadargs* threadargs = args;
+	int err, socket = threadargs->socket;
 	struct net* net = threadargs->net;
+	struct net_connection_thread* thread =
+		container_of(threadargs, struct net_connection_thread, threadargs);
+
 	struct fb* fb = net->fb;
 	struct fb_size fbsize = fb_get_size(fb);
 	union fb_pixel pixel;
-	off_t offset;
+	unsigned int x, y;
 
+	off_t offset;
 	ssize_t read_len;
 	char* last_cmd;
+
 	/*
 		A small ring buffer (64kB * 64k connections = ~4GB at max) to prevent memmoves.
 		Using a ring buffer prevents us from having to memmove but we do have to handle
@@ -161,97 +166,148 @@ static void* net_listen_thread(void* args) {
 
 	if((err = ring_alloc(&ring, RING_SIZE))) {
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
+		goto fail_socket;
+	}
+
+
+recv:
+	while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
+		// FIXME: If data is badly aligned we might have very small reads every second read or so
+		read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
+		if(read_len <= 0) {
+			err = -errno;
+			fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
+			goto fail_ring;
+		}
+//		printf("Read %zd bytes\n", read_len);
+		ring_advance_write(ring, read_len);
+
+		while(ring_any_available(ring)) {
+			last_cmd = ring->ptr_read;
+
+			if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
+				if((err = net_skip_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No whitespace after PX cmd\n");
+					goto recv_more;
+				}
+				if((offset = net_next_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No more whitespace found, missing X\n");
+					goto recv_more;
+				}
+				x = net_str_to_uint32_10(ring, offset);
+				if((err = net_skip_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No whitespace after X coordinate\n");
+					goto recv_more;
+				}
+				if((offset = net_next_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No more whitespace found, missing Y\n");
+					goto recv_more;
+				}
+				y = net_str_to_uint32_10(ring, offset);
+				if((err = net_skip_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No whitespace after Y coordinate\n");
+					goto recv_more;
+				}
+				if((offset = net_next_whitespace(ring)) < 0) {
+//					fprintf(stderr, "No more whitespace found, missing color\n");
+					goto recv_more;
+				}
+				pixel.rgba = net_str_to_uint32_16(ring, offset);
+//				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
+				if(x < fbsize.width && y < fbsize.height) {
+					fb_set_pixel(fb, x, y, &pixel);
+				}
+			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
+				printf("Size requested\n");
+			} else {
+				if((offset = net_next_whitespace(ring)) >= 0) {
+					printf("Encountered unknown command\n");
+					ring_advance_read(ring, offset);
+				} else {
+					goto recv;
+				}
+			}
+
+			net_skip_whitespace(ring);
+		}
+	}
+
+fail_ring:
+	ring_free(ring);
+fail_socket:
+	llist_remove(&thread->list);
+	free(thread);
+
+	shutdown(socket, SHUT_RDWR);
+	close(socket);
+	return NULL;
+
+recv_more:
+	ring->ptr_read = last_cmd;
+	goto recv;
+}
+
+static void* net_listen_thread(void* args) {
+	int err, socket;
+	struct net_threadargs* threadargs = args;
+	struct net* net = threadargs->net;
+
+	struct llist* threadlist;
+	struct net_connection_thread* thread;
+
+	if((err = llist_alloc(&threadlist))) {
+		fprintf(stderr, "Failed to allocate thread list\n");
 		goto fail;
 	}
 
-listen:
 	while(net->state != NET_STATE_SHUTDOWN) {
 		socket = accept(net->socket, NULL, NULL);
 		if(socket < 0) {
 			err = -errno;
 			fprintf(stderr, "Got error %d => %s, continuing\n", errno, strerror(errno));
-			goto fail;
-//			continue;
+			goto fail_threadlist;
 		}
 		printf("Got a new connection\n");
-		// FIXME: In theory we should create a new thread right now but for now we will just continue in the current thread
-recv:
-		while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
-			// FIXME: If data is badly aligned we might have very small reads every second read or so
-			read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
-			if(read_len <= 0) {
-				err = -errno;
-				fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
-				goto fail_socket;
-			}
-//			printf("Read %zd bytes\n", read_len);
-			ring_advance_write(ring, read_len);
 
-			while(ring_any_available(ring)) {
-				last_cmd = ring->ptr_read;
-
-				if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
-					if((err = net_skip_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No whitespace after PX cmd\n");
-						goto recv_more;
-					}
-					if((offset = net_next_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No more whitespace found, missing X\n");
-						goto recv_more;
-					}
-					x = net_str_to_uint32_10(ring, offset);
-					if((err = net_skip_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No whitespace after X coordinate\n");
-						goto recv_more;
-					}
-					if((offset = net_next_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No more whitespace found, missing Y\n");
-						goto recv_more;
-					}
-					y = net_str_to_uint32_10(ring, offset);
-					if((err = net_skip_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No whitespace after Y coordinate\n");
-						goto recv_more;
-					}
-					if((offset = net_next_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No more whitespace found, missing color\n");
-						goto recv_more;
-					}
-					pixel.rgba = net_str_to_uint32_16(ring, offset);
-//					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
-					if(x < fbsize.width && y < fbsize.height) {
-						fb_set_pixel(fb, x, y, &pixel);
-					}
-				} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
-					printf("Size requested\n");
-				} else {
-					if((offset = net_next_whitespace(ring)) >= 0) {
-						printf("Encountered unknown command\n");
-						ring_advance_read(ring, offset);
-					} else {
-						goto recv;
-					}
-				}
-
-				net_skip_whitespace(ring);
-			}
+		thread = malloc(sizeof(struct net_connection_thread));
+		if(!thread) {
+			fprintf(stderr, "Failed to allocate memory for connection thread\n");
+			goto fail_connection;
 		}
+		llist_entry_init(&thread->list);
+		thread->threadargs.socket = socket;
+		thread->threadargs.net = net;
+
+		if((err = -pthread_create(&thread->thread, NULL, net_connection_thread, &thread->threadargs))) {
+			fprintf(stderr, "Failed to create thread: %d => %s\n", err, strerror(-err));
+			goto fail_thread_entry;
+		}
+
+		llist_append(threadlist, &thread->list);
+
+		continue;
+
+fail_thread_entry:
+		free(thread);
+fail_connection:
+		shutdown(socket, SHUT_RDWR);
+		close(socket);
 	}
-
-	return NULL;
-
+fail_threadlist:
+	llist_lock(threadlist);
+	while(threadlist->head) {
+		thread = llist_entry_get_value(threadlist->head, struct net_connection_thread, list);
+		pthread_kill(thread->thread, SIGINT);
+		llist_unlock(threadlist)
+		pthread_join(thread->thread, NULL);
+		llist_lock(threadlist);
+	}
+	llist_unlock(threadlist);
+	llist_free(threadlist);
 fail:
 	net_shutdown(net);
 	return NULL;
 
-fail_socket:
-	close(socket);
-	shutdown(socket, SHUT_RDWR);
-	goto listen;
-
-recv_more:
-	ring->ptr_read = last_cmd;
-	goto recv;
 }
 
 static void net_listen_join_all(struct net* net) {

@@ -5,6 +5,7 @@
 #include <pthread.h>
 
 #include "framebuffer.h"
+#include "llist.h"
 
 enum {
 	NET_STATE_IDLE,
@@ -30,6 +31,16 @@ struct net_threadargs {
 	struct net* net;
 };
 
+struct net_connection_threadargs {
+	struct net* net;
+	int socket;
+};
+
+struct net_connection_thread {
+	pthread_t thread;
+	struct llist_entry list;
+	struct net_connection_threadargs threadargs;
+};
 
 
 int net_alloc(struct net** network, struct fb* fb);
