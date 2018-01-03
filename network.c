@@ -19,13 +19,12 @@
 #include "llist.h"
 #include "util.h"
 
-#define RING_SIZE 65536
 #define CONNECTION_QUEUE_SIZE 16
 #define THREAD_NAME_MAX 16
 
 static int one = 1;
 
-int net_alloc(struct net** network, struct fb* fb) {
+int net_alloc(struct net** network, struct fb* fb, size_t ring_size) {
 	int err = 0;
 	struct net* net = malloc(sizeof(struct net));
 	if(!net) {
@@ -35,6 +34,7 @@ int net_alloc(struct net** network, struct fb* fb) {
 
 	net->state = NET_STATE_IDLE;
 	net->fb = fb;
+	net->ring_size = ring_size;
 
 	*network = net;
 
@@ -164,7 +164,7 @@ static void* net_connection_thread(void* args) {
 	*/
 	struct ring* ring;
 
-	if((err = ring_alloc(&ring, RING_SIZE))) {
+	if((err = ring_alloc(&ring, net->ring_size))) {
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
 		goto fail_socket;
 	}

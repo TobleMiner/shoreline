@@ -17,6 +17,8 @@ enum {
 struct net_threadargs;
 
 struct net {
+	size_t ring_size;
+
 	unsigned int state;
 
 	int socket;
@@ -43,7 +45,7 @@ struct net_connection_thread {
 };
 
 
-int net_alloc(struct net** network, struct fb* fb);
+int net_alloc(struct net** network, struct fb* fb, size_t ring_size);
 void net_free(struct net* net);
 
 
