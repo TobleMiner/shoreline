@@ -1,4 +1,6 @@
-Shoreline [WIP]
-===============
+Shoreline
+=========
 
-A fast pixelflut server written in C
+A very fast pixelflut server written in C
+
+

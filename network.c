@@ -21,6 +21,7 @@
 
 #define CONNECTION_QUEUE_SIZE 16
 #define THREAD_NAME_MAX 16
+#define SIZE_INFO_MAX 32
 
 static int one = 1;
 
@@ -153,7 +154,7 @@ static void* net_connection_thread(void* args) {
 	unsigned int x, y;
 
 	off_t offset;
-	ssize_t read_len;
+	ssize_t read_len, write_len, write_cnt;
 	char* last_cmd;
 
 	/*
@@ -163,6 +164,11 @@ static void* net_connection_thread(void* args) {
 		checking for wraparounds
 	*/
 	struct ring* ring;
+
+	char size_info[SIZE_INFO_MAX];
+
+	int size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize.width, fbsize.height);
+
 
 	if((err = ring_alloc(&ring, net->ring_size))) {
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
@@ -218,7 +224,15 @@ recv:
 					fb_set_pixel(fb, x, y, &pixel);
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
-				printf("Size requested\n");
+				write_cnt = 0;
+				while(write_cnt < size_info_len) {
+					if((write_len = write(socket, size_info + write_cnt, size_info_len - write_cnt)) < 0) {
+						fprintf(stderr, "Failed to write to socket: %d => %s\n", errno, strerror(errno));
+						err = -errno;
+						goto fail_ring;
+					}
+					write_cnt += write_len;
+				}
 			} else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
 					printf("Encountered unknown command\n");
