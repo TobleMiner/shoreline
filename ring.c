@@ -50,11 +50,6 @@ size_t ring_available(struct ring* ring) {
 	return ring->size - (ring->ptr_read - ring->ptr_write);
 }
 
-bool ring_any_available(struct ring* ring) {
-	return ring->ptr_read != ring->ptr_write;
-}
-
-
 // Number of virtually contiguous bytes that can be read from ringbuffer
 size_t ring_available_contig(struct ring* ring) {
 	if(ring->ptr_write >= ring->ptr_read) {
@@ -79,20 +74,6 @@ size_t ring_free_space_contig(struct ring* ring) {
 	return ring->size - (ring->ptr_write - ring->data) - (ring->ptr_read == ring->data ? 1 : 0);
 }
 
-
-// Pointer to next byte to read from ringbuffer
-char* ring_next(struct ring* ring, char* ptr) {
-	if(ptr < ring->data + ring->size - 1) {
-		return ptr + 1;
-	}
-	return ring->data;
-}
-
-// Take a small peek into the buffer
-char ring_peek_one(struct ring* ring) {
-	return *ring->ptr_read;
-}
-
 // Take a peek into the ring buffer
 int ring_peek(struct ring* ring, char* data, size_t len) {
 	size_t avail_contig;
@@ -111,13 +92,6 @@ int ring_peek(struct ring* ring, char* data, size_t len) {
 	}
 
 	return 0;
-}
-
-// Read one byte from the buffer
-char ring_read_one(struct ring* ring) {
-	char c = *ring->ptr_read;
-	ring->ptr_read = ring_next(ring, ring->ptr_read);
-	return c;
 }
 
 // Read from this ring buffer
@@ -161,10 +135,6 @@ int ring_write(struct ring* ring, char* data, size_t len) {
 		ring->ptr_write = ring->data + len - free_contig;
 	}
 	return 0;
-}
-
-void ring_inc_read(struct ring* ring) {
-	ring->ptr_read = ring_next(ring, ring->ptr_read);
 }
 
 void ring_advance_read(struct ring* ring, off_t offset) {
