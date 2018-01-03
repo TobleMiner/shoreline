@@ -3,6 +3,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <assert.h>
+#include <errno.h>
 
 #include "llist.h"
 
@@ -20,8 +21,25 @@ void llist_entry_init(struct llist_entry* entry) {
 }
 
 
+int llist_alloc(struct llist** ret) {
+	struct llist* llist = malloc(sizeof(struct llist));
+	if(!llist) {
+		return -ENOMEM;
+	}
+
+	llist_init(llist);
+	*ret = llist;
+
+	return 0;
+}
+
+void llist_free(struct llist* llist) {
+	free(llist);
+}
+
+
 void llist_append(struct llist* llist, struct llist_entry* entry) {
-	pthread_mutex_lock(&llist->lock);
+	llist_lock(llist);
 	entry->list = llist;
 	if(!llist->head || !llist->tail) {
 		assert(!llist->tail);
@@ -35,11 +53,12 @@ void llist_append(struct llist* llist, struct llist_entry* entry) {
 		entry->prev = llist->tail;
 		llist->tail = entry;
 	}
-	pthread_mutex_unlock(&llist->lock);
+	llist_unlock(llist);
 }
 
 void llist_remove(struct llist_entry* entry) {
 	struct llist* llist = entry->list;
+	llist_lock(llist);
 	if(entry == llist->head) {
 		llist->head = entry->next;
 	}
@@ -55,4 +74,5 @@ void llist_remove(struct llist_entry* entry) {
 	entry->next = NULL;
 	entry->prev = NULL;
 	entry->list = NULL;
+	llist_unlock(llist);
 }
