@@ -71,18 +71,27 @@ fail:
 
 void net_free(struct net* net) {
 	assert(net->state == NET_STATE_EXIT);
+	free(net->threads);
 	free(net);
 }
 
 
-void net_shutdown(struct net* net) {
-	net->state = NET_STATE_SHUTDOWN;
-	fcntl(net->socket, F_SETFL, O_NONBLOCK);
+static void net_kill_threads(struct net* net) {
 	int i = net->num_threads;
+	struct net_thread* thread;
+	net->state = NET_STATE_SHUTDOWN;
 	while(i-- > 0) {
-		pthread_kill(net->threads[i], SIGINT);
+		thread = &net->threads[i];
+		pthread_cancel(thread->thread);
+		pthread_join(thread->thread, NULL);
 	}
+}
+
+void net_shutdown(struct net* net) {
+	net_kill_threads(net);
+	shutdown(net->socket, SHUT_RDWR);
 	close(net->socket);
+	net->state = NET_STATE_EXIT;
 }
 
 static int net_is_whitespace(char c) {
@@ -168,6 +177,23 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 	return val;
 }
 
+static void net_connection_thread_cleanup_ring(void* args) {
+	struct net_connection_thread* thread = args;
+	ring_free(thread->ring);
+}
+
+static void net_connection_thread_cleanup_socket(void* args) {
+	struct net_connection_thread* thread = args;
+	shutdown(thread->threadargs.socket, SHUT_RDWR);
+	close(thread->threadargs.socket);
+}
+
+static void net_connection_thread_cleanup_self(void* args) {
+	struct net_connection_thread* thread = args;
+	llist_remove(&thread->list);
+	free(thread);
+}
+
 static void* net_connection_thread(void* args) {
 	struct net_connection_threadargs* threadargs = args;
 	int err, socket = threadargs->socket;
@@ -196,20 +222,26 @@ static void* net_connection_thread(void* args) {
 
 	int size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize.width, fbsize.height);
 
+	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
+	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
+
 
 	if((err = ring_alloc(&ring, net->ring_size))) {
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
 		goto fail_socket;
 	}
+	thread->ring = ring;
 
-
+	pthread_cleanup_push(net_connection_thread_cleanup_ring, thread);
 recv:
-	while(net->state != NET_STATE_SHUTDOWN) { // <= Break on error would be fine, too I guess
+	while(net->state != NET_STATE_SHUTDOWN) {
 		// FIXME: If data is badly aligned we might have very small reads every second read or so
 		read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
 		if(read_len <= 0) {
-			err = -errno;
-			fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
+			if(read_len < 0) {
+				err = -errno;
+				fprintf(stderr, "Client socket failed %d => %s\n", errno, strerror(errno));
+			}
 			goto fail_ring;
 		}
 //		printf("Read %zd bytes\n", read_len);
@@ -278,13 +310,10 @@ recv:
 	}
 
 fail_ring:
-	ring_free(ring);
+	pthread_cleanup_pop(true);
 fail_socket:
-	llist_remove(&thread->list);
-	free(thread);
-
-	shutdown(socket, SHUT_RDWR);
-	close(socket);
+	pthread_cleanup_pop(true);
+	pthread_cleanup_pop(true);
 	return NULL;
 
 recv_more:
@@ -292,80 +321,79 @@ recv_more:
 	goto recv;
 }
 
+static void net_listen_thread_cleanup_threadlist(void* args) {
+	struct net_thread* thread = args;
+	struct llist* threadlist = thread->threadlist;
+	struct net_connection_thread* conn_thread;
+
+	llist_lock(threadlist);
+	while(threadlist->head) {
+		conn_thread = llist_entry_get_value(threadlist->head, struct net_connection_thread, list);
+		pthread_cancel(conn_thread->thread);
+		llist_unlock(threadlist)
+		pthread_join(conn_thread->thread, NULL);
+		llist_lock(threadlist);
+	}
+	llist_unlock(threadlist);
+	llist_free(threadlist);
+}
+
+
 static void* net_listen_thread(void* args) {
 	int err, socket;
 	struct net_threadargs* threadargs = args;
 	struct net* net = threadargs->net;
+	struct net_thread* thread = container_of(args, struct net_thread, threadargs);
 
 	struct llist* threadlist;
-	struct net_connection_thread* thread;
+	struct net_connection_thread* conn_thread;
 
 	if((err = llist_alloc(&threadlist))) {
 		fprintf(stderr, "Failed to allocate thread list\n");
 		goto fail;
 	}
+	thread->threadlist = threadlist;
+
+	pthread_cleanup_push(net_listen_thread_cleanup_threadlist, thread);
 
 	while(net->state != NET_STATE_SHUTDOWN) {
 		socket = accept(net->socket, NULL, NULL);
 		if(socket < 0) {
 			err = -errno;
-			fprintf(stderr, "Got error %d => %s, continuing\n", errno, strerror(errno));
+			fprintf(stderr, "Got error %d => %s, shutting down\n", errno, strerror(errno));
 			goto fail_threadlist;
 		}
 		printf("Got a new connection\n");
 
-		thread = malloc(sizeof(struct net_connection_thread));
-		if(!thread) {
+		conn_thread = malloc(sizeof(struct net_connection_thread));
+		if(!conn_thread) {
 			fprintf(stderr, "Failed to allocate memory for connection thread\n");
 			goto fail_connection;
 		}
-		llist_entry_init(&thread->list);
-		thread->threadargs.socket = socket;
-		thread->threadargs.net = net;
+		llist_entry_init(&conn_thread->list);
+		conn_thread->threadargs.socket = socket;
+		conn_thread->threadargs.net = net;
 
-		if((err = -pthread_create(&thread->thread, NULL, net_connection_thread, &thread->threadargs))) {
+		if((err = -pthread_create(&conn_thread->thread, NULL, net_connection_thread, &conn_thread->threadargs))) {
 			fprintf(stderr, "Failed to create thread: %d => %s\n", err, strerror(-err));
 			goto fail_thread_entry;
 		}
 
-		llist_append(threadlist, &thread->list);
+		llist_append(threadlist, &conn_thread->list);
 
 		continue;
 
 fail_thread_entry:
-		free(thread);
+		free(conn_thread);
 fail_connection:
 		shutdown(socket, SHUT_RDWR);
 		close(socket);
 	}
 fail_threadlist:
-	llist_lock(threadlist);
-	while(threadlist->head) {
-		thread = llist_entry_get_value(threadlist->head, struct net_connection_thread, list);
-		pthread_kill(thread->thread, SIGINT);
-		llist_unlock(threadlist)
-		pthread_join(thread->thread, NULL);
-		llist_lock(threadlist);
-	}
-	llist_unlock(threadlist);
-	llist_free(threadlist);
+	pthread_cleanup_pop(true);
 fail:
-	net_shutdown(net);
 	return NULL;
 
-}
-
-static void net_listen_join_all(struct net* net) {
-	int i = net->num_threads;
-	while(i-- > 0) {
-		pthread_join(net->threads[i], NULL);
-	}
-}
-
-void net_join(struct net* net) {
-	net_listen_join_all(net);
-	shutdown(net->socket, SHUT_RDWR);
-	net->state = NET_STATE_EXIT;
 }
 
 int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr) {
@@ -401,47 +429,38 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 
 	printf("Listening on %s:%hu\n", inet_ntoa(*((struct in_addr*)(&addr->sin_addr))), ntohs(addr->sin_port));
 
-	// Allocate space for thread handles
-	net->threads = malloc(num_threads * sizeof(pthread_t));
+	// Allocate space for threads
+	net->threads = malloc(num_threads * sizeof(struct net_thread));
 	if(!net->threads) {
 		err = -ENOMEM;
 		goto fail_socket;
 	}
 
-	// Allocate thread args
-	net->threadargs = malloc(num_threads * sizeof(struct net_threadargs));
-	if(!net->threadargs) {
-		err = -ENOMEM;
-		goto fail_threads_alloc;
-	}
-
 	for(i = 0; i < num_threads; i++) {
-		net->threadargs[i].net = net;
+		net->threads[i].threadargs.net = net;
 	}
 
 	// Setup pthreads (using net->num_threads as a counter might come back to bite me)
 	for(net->num_threads = 0; net->num_threads < num_threads; net->num_threads++) {
-		err = -pthread_create(&net->threads[net->num_threads], NULL, net_listen_thread, &net->threadargs[net->num_threads]);
+		err = -pthread_create(&net->threads[net->num_threads].thread, NULL, net_listen_thread, &net->threads[net->num_threads].threadargs);
 		if(err) {
 			fprintf(stderr, "Failed to create pthread %d\n", net->num_threads);
 			goto fail_pthread_create;
 		}
 		snprintf(threadname, THREAD_NAME_MAX, "network %d", net->num_threads);
-		pthread_setname_np(net->threads[net->num_threads], threadname);
+		pthread_setname_np(net->threads[net->num_threads].thread, threadname);
 	}
 
 	return 0;
 
 fail_pthread_create:
-	net->state = NET_STATE_SHUTDOWN;
-	net_listen_join_all(net);
-fail_threadargs_alloc:
-	free(net->threadargs);
+	net_kill_threads(net);
 fail_threads_alloc:
 	free(net->threads);
 fail_socket:
 	close(net->socket);
 	shutdown(net->socket, SHUT_RDWR);
 fail:
+	net->state = NET_STATE_IDLE;
 	return err;
 }

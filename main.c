@@ -26,7 +26,7 @@
 
 static bool do_exit = false;
 
-void doshutdown(int signal)
+void doshutdown(int sig)
 {
 	printf("Shutting down\n");
 	do_exit = true;
@@ -152,7 +152,6 @@ int main(int argc, char** argv) {
 		usleep(1000000UL / screen_update_rate);
 	}
 	net_shutdown(net);
-	net_join(net);
 
 fail_net:
 	net_free(net);

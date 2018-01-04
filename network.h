@@ -6,6 +6,7 @@
 
 #include "framebuffer.h"
 #include "llist.h"
+#include "ring.h"
 
 enum {
 	NET_STATE_IDLE,
@@ -14,7 +15,18 @@ enum {
 	NET_STATE_EXIT
 };
 
-struct net_threadargs;
+struct net;
+
+struct net_threadargs {
+	struct net* net;
+};
+
+struct net_thread {
+	pthread_t thread;
+	struct net_threadargs threadargs;
+
+	struct llist* threadlist;
+};
 
 struct net {
 	size_t ring_size;
@@ -24,13 +36,8 @@ struct net {
 	int socket;
 
 	unsigned int num_threads;
-	pthread_t* threads;
-	struct net_threadargs* threadargs;
+	struct net_thread* threads;
 	struct fb* fb;
-};
-
-struct net_threadargs {
-	struct net* net;
 };
 
 struct net_connection_threadargs {
@@ -42,6 +49,8 @@ struct net_connection_thread {
 	pthread_t thread;
 	struct llist_entry list;
 	struct net_connection_threadargs threadargs;
+
+	struct ring* ring;
 };
 
 
@@ -50,7 +59,6 @@ void net_free(struct net* net);
 
 
 void net_shutdown(struct net* net);
-void net_join(struct net* net);
 int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr);
 
 
