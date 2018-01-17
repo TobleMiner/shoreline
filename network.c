@@ -280,7 +280,7 @@ recv:
 				if(offset > 6) {
 					pixel.abgr = net_str_to_uint32_16(ring, offset);
 				} else {
-					*((uint32_t*)&pixel.color.bgr) = net_str_to_uint32_16(ring, offset);
+					pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
 					pixel.color.alpha = 0;
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
