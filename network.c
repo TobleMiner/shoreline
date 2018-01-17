@@ -277,7 +277,12 @@ recv:
 //					fprintf(stderr, "No more whitespace found, missing color\n");
 					goto recv_more;
 				}
-				pixel.rgba = net_str_to_uint32_16(ring, offset);
+				if(offset > 6) {
+					pixel.abgr = net_str_to_uint32_16(ring, offset);
+				} else {
+					*((uint32_t*)&pixel.color.bgr) = net_str_to_uint32_16(ring, offset);
+					pixel.color.alpha = 0;
+				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize.width && y < fbsize.height) {
 					fb_set_pixel(fb, x, y, &pixel);

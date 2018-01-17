@@ -56,9 +56,9 @@ void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red
 	assert(y < fb->size.height);
 
 	target = &(fb->pixels[y * fb->size.width + x]);
-	target->color.red = red;
-	target->color.green = green;
-	target->color.blue = blue;
+	target->color.color_bgr.red = red;
+	target->color.color_bgr.green = green;
+	target->color.color_bgr.blue = blue;
 }
 
 // It might be a good idea to offer a variant returning a pointer to avoid unnecessary copies

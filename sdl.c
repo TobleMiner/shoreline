@@ -50,7 +50,7 @@ int sdl_alloc(struct sdl** ret, struct fb* fb) {
 	}
 	SDL_RenderClear(sdl->renderer);
 
-	sdl->texture = SDL_CreateTexture(sdl->renderer, SDL_PIXELFORMAT_ARGB8888,
+	sdl->texture = SDL_CreateTexture(sdl->renderer, SDL_PIXELFORMAT_RGBA8888,
 		SDL_TEXTUREACCESS_STREAMING, size.width, size.height);
 
 	if(!sdl->texture) {
