@@ -106,7 +106,8 @@ int sdl_update(struct sdl* sdl) {
 				assert(height >= 0);
 				printf("Resizing to %dx%d px\n", width, height);
 
-				texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT, SDL_TEXTUREACCESS_STREAMING, width, height);
+				texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT,
+					SDL_TEXTUREACCESS_STREAMING, width, height);
 				if(!texture) {
 					fprintf(stderr, "Failed to allocate new texture\n");
 					continue;
