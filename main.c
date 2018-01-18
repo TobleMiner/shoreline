@@ -148,7 +148,9 @@ int main(int argc, char** argv) {
 	}
 
 	while(!do_exit) {
-		sdl_update(sdl);
+		if(sdl_update(sdl)) {
+			doshutdown(SIGINT);
+		}
 		usleep(1000000UL / screen_update_rate);
 	}
 	net_shutdown(net);

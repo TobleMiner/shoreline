@@ -69,8 +69,34 @@ union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
 	return fb->pixels[y * fb->size.width + x];
 }
 
+static void fb_set_size(struct fb* fb, unsigned int width, unsigned int height) {
+	fb->size.width = width;
+	fb->size.height = height;
+}
 
+int fb_resize(struct fb* fb, unsigned int width, unsigned int height) {
+	int err = 0;
+	union fb_pixel* fbmem, *oldmem;
+	struct fb_size oldsize = *fb_get_size(fb);
+	size_t memsize = width * height * sizeof(union fb_pixel);
+	size_t oldmemsize = oldsize.width * oldsize.height * sizeof(union fb_pixel);
+	fbmem = malloc(memsize);
+	if(!fbmem) {
+		err = -ENOMEM;
+		goto fail;
+	}
+	memset(fbmem, 0, memsize);
 
-struct fb_size fb_get_size(struct fb* fb) {
-	return fb->size;
+	oldmem = fb->pixels;
+	// Try to prevent oob writes
+	if(oldmemsize > memsize) {
+		fb_set_size(fb, width, height);
+		fb->pixels = fbmem;
+	} else {
+		fb->pixels = fbmem;
+		fb_set_size(fb, width, height);
+	}
+	free(oldmem);
+fail:
+	return err;
 }

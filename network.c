@@ -202,7 +202,7 @@ static void* net_connection_thread(void* args) {
 		container_of(threadargs, struct net_connection_thread, threadargs);
 
 	struct fb* fb = net->fb;
-	struct fb_size fbsize = fb_get_size(fb);
+	struct fb_size* fbsize = fb_get_size(fb);
 	union fb_pixel pixel;
 	unsigned int x, y;
 
@@ -220,7 +220,7 @@ static void* net_connection_thread(void* args) {
 
 	char size_info[SIZE_INFO_MAX];
 
-	int size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize.width, fbsize.height);
+	int size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
 
 	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
 	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
@@ -284,7 +284,7 @@ recv:
 					pixel.color.alpha = 0;
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
-				if(x < fbsize.width && y < fbsize.height) {
+				if(x < fbsize->width && y < fbsize->height) {
 					fb_set_pixel(fb, x, y, &pixel);
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
@@ -460,7 +460,7 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 
 fail_pthread_create:
 	net_kill_threads(net);
-fail_threads_alloc:
+//fail_threads_alloc:
 	free(net->threads);
 fail_socket:
 	close(net->socket);

@@ -16,7 +16,7 @@ struct sdl {
 int sdl_alloc(struct sdl** ret, struct fb* fb);
 void sdl_free(struct sdl* sdl);
 
-void sdl_update(struct sdl* sdl);
+int sdl_update(struct sdl* sdl);
 
 
 #endif
