@@ -219,8 +219,7 @@ static void* net_connection_thread(void* args) {
 	struct ring* ring;
 
 	char size_info[SIZE_INFO_MAX];
-
-	int size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
+	int size_info_len;
 
 	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
 	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
@@ -288,6 +287,11 @@ recv:
 					fb_set_pixel(fb, x, y, &pixel);
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
+				size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
+				if(size_info_len >= SIZE_INFO_MAX) {
+					fprintf(stderr, "SIZE output too long\n");
+					goto fail_ring;
+				}
 				write_cnt = 0;
 				while(write_cnt < size_info_len) {
 					if((write_len = write(socket, size_info + write_cnt, size_info_len - write_cnt)) < 0) {
