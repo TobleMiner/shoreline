@@ -12,6 +12,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <signal.h>
+#include <netdb.h>
 
 #include "network.h"
 #include "ring.h"
@@ -70,7 +71,7 @@ fail:
 }
 
 void net_free(struct net* net) {
-	assert(net->state == NET_STATE_EXIT);
+	assert(net->state == NET_STATE_EXIT || net->state == NET_STATE_IDLE);
 	free(net->threads);
 	free(net);
 }
@@ -405,9 +406,10 @@ fail:
 
 }
 
-int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr) {
+int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storage* addr, size_t addr_len) {
 	int err = 0, i;
 	char threadname[THREAD_NAME_MAX];
+	char host_tmp[NI_MAXHOST], port_tmp[NI_MAXSERV];
 
 	assert(num_threads > 0);
 
@@ -415,7 +417,7 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 	net->state = NET_STATE_LISTEN;
 
 	// Create socket
-	net->socket = socket(AF_INET, SOCK_STREAM, 0);
+	net->socket = socket(addr->ss_family, SOCK_STREAM, 0);
 	if(net->socket < 0) {
 		fprintf(stderr, "Failed to create socket\n");
 		err = -errno;
@@ -423,9 +425,11 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 	}
 	setsockopt(net->socket, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
+	assert(!getnameinfo((struct sockaddr*)addr, addr_len, host_tmp, NI_MAXHOST, port_tmp, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV));
+
 	// Start listening
-	if(bind(net->socket, (struct sockaddr*)addr, sizeof(struct sockaddr_in)) < 0) {
-		fprintf(stderr, "Failed to bind to %s:%hu\n", inet_ntoa(*((struct in_addr*)addr)), ntohs(addr->sin_port));
+	if(bind(net->socket, (struct sockaddr*)addr, addr_len) < 0) {
+		fprintf(stderr, "Failed to bind to %s:%s\n", host_tmp, port_tmp);
 		err = -errno;
 		goto fail_socket;
 	}
@@ -436,7 +440,7 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* ad
 		goto fail_socket;
 	}
 
-	printf("Listening on %s:%hu\n", inet_ntoa(*((struct in_addr*)(&addr->sin_addr))), ntohs(addr->sin_port));
+	printf("Listening on %s:%s\n", host_tmp, port_tmp);
 
 	// Allocate space for threads
 	net->threads = malloc(num_threads * sizeof(struct net_thread));

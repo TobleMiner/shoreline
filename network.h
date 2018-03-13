@@ -59,7 +59,7 @@ void net_free(struct net* net);
 
 
 void net_shutdown(struct net* net);
-int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_in* addr);
+int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storage* addr, size_t addr_len);
 
 
 

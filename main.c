@@ -10,14 +10,15 @@
 #include <errno.h>
 #include <stdbool.h>
 #include <getopt.h>
+#include <netdb.h>
 
 #include "framebuffer.h"
 #include "sdl.h"
 #include "network.h"
 
 
-#define PORT_DEFAULT 1234
-#define LISTEN_DEFAULT "0.0.0.0"
+#define PORT_DEFAULT "1234"
+#define LISTEN_DEFAULT "::"
 #define RATE_DEFAULT 60
 #define WIDTH_DEFAULT 1024
 #define HEIGHT_DEFAULT 768
@@ -41,10 +42,12 @@ int main(int argc, char** argv) {
 	char opt;
 	struct fb* fb;
 	struct sdl* sdl;
-	struct sockaddr_in inaddr;
+	struct sockaddr_storage* inaddr;
+	struct addrinfo* addr_list;
 	struct net* net;
+	size_t addr_len;
 
-	unsigned short port = PORT_DEFAULT;
+	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
 
 	int width = WIDTH_DEFAULT;
@@ -57,7 +60,7 @@ int main(int argc, char** argv) {
 	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:?")) != -1) {
 		switch(opt) {
 			case('p'):
-				port = (unsigned short)strtoul(optarg, NULL, 10);
+				port = optarg;
 				break;
 			case('b'):
 				listen_address = optarg;
@@ -129,22 +132,25 @@ int main(int argc, char** argv) {
 	{
 		fprintf(stderr, "Failed to bind signal\n");
 		err = -EINVAL;
-		goto fail_sdl;
+		goto fail_net;
 	}
 	if(signal(SIGPIPE, SIG_IGN))
 	{
 		fprintf(stderr, "Failed to bind signal\n");
 		err = -EINVAL;
-		goto fail_sdl;
+		goto fail_net;
 	}
 
-	inet_pton(AF_INET, listen_address, &(inaddr.sin_addr.s_addr));
-	inaddr.sin_port = htons(port);
-	inaddr.sin_family = AF_INET;
-
-	if((err = net_listen(net, listen_threads, &inaddr))) {
-		fprintf(stderr, "Failed to start listening: %d => %s\n", err, strerror(-err));
+	if((err = -getaddrinfo(listen_address, port, NULL, &addr_list))) {
 		goto fail_net;
+	}
+
+	inaddr = (struct sockaddr_storage*)addr_list->ai_addr;
+	addr_len = addr_list->ai_addrlen;
+
+	if((err = net_listen(net, listen_threads, inaddr, addr_len))) {
+		fprintf(stderr, "Failed to start listening: %d => %s\n", err, strerror(-err));
+		goto fail_addrinfo;
 	}
 
 	while(!do_exit) {
@@ -155,6 +161,8 @@ int main(int argc, char** argv) {
 	}
 	net_shutdown(net);
 
+fail_addrinfo:
+	freeaddrinfo(addr_list);
 fail_net:
 	net_free(net);
 fail_sdl:
