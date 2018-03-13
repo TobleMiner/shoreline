@@ -19,7 +19,7 @@ Shoreline provides a SDL window for drawing. There are a few commandline switche
 
 ```
 -p <port>		Port to listen on (default 1234)
--b <address>		Address to listen on (default 0.0.0.0)
+-b <address>		Address to listen on (default ::)
 -w <width>		Width of drawing surface (default 1024)
 -h <height>		Height of drawing surface (default 768)
 -r <update rate>	Screen update rate in HZ (default 60)
