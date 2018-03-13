@@ -1,7 +1,7 @@
 Shoreline
 =========
 
-A very fast pixelflut server written in C
+A very fast pixelflut server with full IPv6 support written in C
 
 # Compiling
 
