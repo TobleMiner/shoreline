@@ -38,8 +38,7 @@ void show_usage(char* binary) {
 }
 
 int main(int argc, char** argv) {
-	int err;
-	char opt;
+	int err, opt;
 	struct fb* fb;
 	struct sdl* sdl;
 	struct sockaddr_storage* inaddr;
