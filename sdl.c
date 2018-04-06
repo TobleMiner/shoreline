@@ -12,7 +12,7 @@
 #define SL_PXFMT SDL_PIXELFORMAT_RGBA8888
 
 int sdl_alloc(struct sdl** ret, struct fb* fb) {
-	int err = 0;
+/*	int err = 0;
 	struct sdl* sdl = malloc(sizeof(struct sdl));
 	struct fb_size* size;
 	if(!sdl) {
@@ -75,20 +75,21 @@ fail_sdl_init:
 fail_sdl:
 	free(sdl);
 fail:
-	return err;
+	return err;*/
+	return 0;
 };
 
 void sdl_free(struct sdl* sdl) {
-	SDL_DestroyTexture(sdl->texture);
+/*	SDL_DestroyTexture(sdl->texture);
 	SDL_DestroyRenderer(sdl->renderer);
 	SDL_DestroyWindow(sdl->window);
 	SDL_Quit();
-	free(sdl);
+	free(sdl);*/
 }
 
 
 int sdl_update(struct sdl* sdl) {
-	struct fb_size* size = fb_get_size(sdl->fb);
+/*	struct fb_size* size = fb_get_size(sdl->fb);
 
 	int width, height;
 	SDL_Window* window;
@@ -124,6 +125,6 @@ int sdl_update(struct sdl* sdl) {
 	SDL_UpdateTexture(sdl->texture, NULL, sdl->fb->pixels, size->width * sizeof(union fb_pixel));
 	SDL_RenderCopy(sdl->renderer, sdl->texture, NULL, NULL);
 	SDL_RenderPresent(sdl->renderer);
-
+*/
 	return 0;
 }
