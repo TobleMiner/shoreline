@@ -50,7 +50,7 @@
  */
 static int one = 1;
 
-int net_alloc(struct net** network, struct fb* fb, size_t ring_size) {
+int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size) {
 	int err = 0;
 	struct net* net = malloc(sizeof(struct net));
 	if(!net) {
@@ -59,7 +59,8 @@ int net_alloc(struct net** network, struct fb* fb, size_t ring_size) {
 	}
 
 	net->state = NET_STATE_IDLE;
-	net->fb = fb;
+	net->fb_list = fb_list;
+	net->fb_size = fb_size;
 	net->ring_size = ring_size;
 
 	*network = net;
@@ -202,8 +203,9 @@ static void* net_connection_thread(void* args) {
 	struct net_connection_thread* thread =
 		container_of(threadargs, struct net_connection_thread, threadargs);
 
-	struct fb* fb = net->fb;
-	struct fb_size* fbsize = fb_get_size(fb);
+	unsigned numa_node = get_numa_node();
+	struct fb* fb = fb_get_fb_on_node(net->fb_list, numa_node);
+	struct fb_size* fbsize;
 	union fb_pixel pixel;
 	unsigned int x, y;
 
@@ -221,6 +223,16 @@ static void* net_connection_thread(void* args) {
 
 	char size_info[SIZE_INFO_MAX];
 	int size_info_len;
+
+	if(!fb) {
+		printf("Failed to find fb on NUMA node %u, creating new fb\n", numa_node);
+		if(fb_alloc(&fb, net->fb_size->width, net->fb_size->height)) {
+			fprintf(stderr, "Failed to allocate fb on node\n");
+			goto fail;
+		}
+		llist_append(net->fb_list, &fb->list);
+	}
+	fbsize = fb_get_size(fb);
 
 	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
 	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
@@ -281,11 +293,13 @@ recv:
 					pixel.abgr = net_str_to_uint32_16(ring, offset);
 				} else {
 					pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
-					pixel.color.alpha = 0;
+					pixel.color.alpha = 255;
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {
 					fb_set_pixel(fb, x, y, &pixel);
+				} else {
+					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
 				size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
@@ -324,6 +338,7 @@ fail_ring:
 fail_socket:
 	pthread_cleanup_pop(true);
 	pthread_cleanup_pop(true);
+fail:
 	return NULL;
 
 recv_more:

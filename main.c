@@ -15,6 +15,7 @@
 #include "framebuffer.h"
 #include "sdl.h"
 #include "network.h"
+#include "llist.h"
 
 
 #define PORT_DEFAULT "1234"
@@ -37,9 +38,24 @@ void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>]\n", binary);
 }
 
+int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
+	struct llist* fb_list = sdl->cb_private;
+	struct llist_entry* cursor;
+	struct fb* fb;
+	int err;
+	llist_for_each(fb_list, cursor) {
+		fb = llist_entry_get_value(cursor, struct fb, list);
+		if((err = fb_resize(fb, width, height))) {
+			return err;
+		}
+	}
+	return 0;
+}
+
 int main(int argc, char** argv) {
 	int err, opt;
 	struct fb* fb;
+	struct llist fb_list;
 	struct sdl* sdl;
 	struct sockaddr_storage* inaddr;
 	struct addrinfo* addr_list;
@@ -117,12 +133,13 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-	if((err = sdl_alloc(&sdl, fb))) {
+	llist_init(&fb_list);
+	if((err = sdl_alloc(&sdl, fb, &fb_list))) {
 		fprintf(stderr, "Failed to create SDL context\n");
 		goto fail_fb;
 	}
 
-	if((err = net_alloc(&net, fb, ringbuffer_size))) {
+	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
 		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
 		goto fail_sdl;
 	}
@@ -153,13 +170,17 @@ int main(int argc, char** argv) {
 	}
 
 	while(!do_exit) {
-		if(sdl_update(sdl)) {
+		llist_lock(&fb_list);
+		fb_coalesce(fb, &fb_list);
+		llist_unlock(&fb_list);
+		if(sdl_update(sdl, resize_cb)) {
 			doshutdown(SIGINT);
 		}
 		usleep(1000000UL / screen_update_rate);
 	}
 	net_shutdown(net);
 
+	fb_free_all(&fb_list);
 fail_addrinfo:
 	freeaddrinfo(addr_list);
 fail_net:

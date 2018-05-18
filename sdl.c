@@ -11,7 +11,7 @@
 
 #define SL_PXFMT SDL_PIXELFORMAT_RGBA8888
 
-int sdl_alloc(struct sdl** ret, struct fb* fb) {
+int sdl_alloc(struct sdl** ret, struct fb* fb, void* cb_private) {
 	int err = 0;
 	struct sdl* sdl = malloc(sizeof(struct sdl));
 	struct fb_size* size;
@@ -22,6 +22,8 @@ int sdl_alloc(struct sdl** ret, struct fb* fb) {
 
 	sdl->fb = fb;
 	size = fb_get_size(fb);
+
+	sdl->cb_private = cb_private;
 
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
 
@@ -87,10 +89,10 @@ void sdl_free(struct sdl* sdl) {
 }
 
 
-int sdl_update(struct sdl* sdl) {
+int sdl_update(struct sdl* sdl, sdl_cb_resize resize_cb) {
 	struct fb_size* size = fb_get_size(sdl->fb);
 
-	int width, height;
+	int width, height, err;
 	SDL_Window* window;
 	SDL_Texture* texture;
 	SDL_Event event;
@@ -105,6 +107,12 @@ int sdl_update(struct sdl* sdl) {
 				assert(width >= 0);
 				assert(height >= 0);
 				printf("Resizing to %dx%d px\n", width, height);
+
+				if(resize_cb) {
+					if((err = resize_cb(sdl, width, height))) {
+						return err;
+					}
+				}
 
 				texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT,
 					SDL_TEXTUREACCESS_STREAMING, width, height);

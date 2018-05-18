@@ -19,7 +19,7 @@ struct llist_entry {
 	struct llist* list;
 };
 
-#define LLIST_ENTRY_INIT { NULL, NULL, NULL }
+#define LLIST_ENTRY_INIT ((struct llist_entry){ NULL, NULL, NULL })
 
 #define llist_entry_get_value(entry, type, member) \
 	container_of(entry, type, member)

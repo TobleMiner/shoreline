@@ -37,7 +37,8 @@ struct net {
 
 	unsigned int num_threads;
 	struct net_thread* threads;
-	struct fb* fb;
+	struct fb_size* fb_size;
+	struct llist* fb_list;
 };
 
 struct net_connection_threadargs {
@@ -54,7 +55,7 @@ struct net_connection_thread {
 };
 
 
-int net_alloc(struct net** network, struct fb* fb, size_t ring_size);
+int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size);
 void net_free(struct net* net);
 
 

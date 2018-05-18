@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "util.h"
 #include "framebuffer.h"
 
 int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
@@ -25,6 +26,9 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 		goto fail_fb;
 	}
 
+	fb->numa_node = get_numa_node();
+	fb->list = LLIST_ENTRY_INIT;
+
 	*framebuffer = fb;
 	return 0;
 
@@ -34,12 +38,29 @@ fail:
 	return err;
 }
 
+struct fb* fb_get_fb_on_node(struct llist* fbs, unsigned numa_node) {
+	struct llist_entry* cursor;
+	struct fb* fb;
+	llist_for_each(fbs, cursor) {
+		fb = llist_entry_get_value(cursor, struct fb, list);
+		if(fb->numa_node == numa_node) {
+			return fb;
+		}
+	}
+	return NULL;
+}
+
 void fb_free(struct fb* fb) {
 	free(fb->pixels);
 	free(fb);
 }
 
-
+void fb_free_all(struct llist* fbs) {
+	struct llist_entry* cursor;
+	llist_for_each(fbs, cursor) {
+		free(llist_entry_get_value(cursor, struct fb, list));
+	}
+}
 
 void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
 	union fb_pixel* target;
@@ -99,4 +120,27 @@ int fb_resize(struct fb* fb, unsigned int width, unsigned int height) {
 	free(oldmem);
 fail:
 	return err;
+}
+
+int fb_coalesce(struct fb* fb, struct llist* fbs) {
+	struct llist_entry* cursor;
+	struct fb* other;
+	size_t i, fb_size = fb->size.width * fb->size.height;
+	// This needs random reordering for fairness or per pixel timestamps
+	llist_for_each(fbs, cursor) {
+		other = llist_entry_get_value(cursor, struct fb, list);
+		if(fb->size.width != other->size.width || fb->size.height != other->size.height) {
+			return -EINVAL;
+		}
+		for(i = 0; i < fb_size; i++) {
+			// This type of transparency handling is crap. We should do proper coalescing
+			if(other->pixels[i].color.alpha == 0) {
+				continue;
+			}
+			fb->pixels[i] = other->pixels[i];
+			// Reset to fully transparent
+			other->pixels[i].color.alpha = 0;
+		}
+	}
+	return 0;
 }
