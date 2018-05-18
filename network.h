@@ -40,6 +40,8 @@ struct net {
 	struct fb_size* fb_size;
 	pthread_mutex_t fb_lock;
 	struct llist* fb_list;
+
+	unsigned long long pixel_cnt;
 };
 
 struct net_connection_threadargs {

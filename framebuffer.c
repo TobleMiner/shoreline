@@ -20,10 +20,16 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	fb->size.width = width;
 	fb->size.height = height;
 
-	fb->pixels = malloc(width * height * sizeof(union fb_pixel));
+	fb->pixels = calloc(width * height, sizeof(union fb_pixel));
 	if(!fb->pixels) {
 		err = -ENOMEM;
 		goto fail_fb;
+	}
+
+	fb->timestamps = calloc(width * height, sizeof(unsigned long long));
+	if(!fb->timestamps) {
+		err = -ENOMEM;
+		goto fail_pixels;
 	}
 
 	fb->numa_node = get_numa_node();
@@ -32,6 +38,8 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	*framebuffer = fb;
 	return 0;
 
+fail_pixels:
+	free(fb->pixels);
 fail_fb:
 	free(fb);
 fail:
@@ -51,6 +59,7 @@ struct fb* fb_get_fb_on_node(struct llist* fbs, unsigned numa_node) {
 }
 
 void fb_free(struct fb* fb) {
+	free(fb->timestamps);
 	free(fb->pixels);
 	free(fb);
 }
@@ -62,14 +71,19 @@ void fb_free_all(struct llist* fbs) {
 	}
 }
 
-void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
+/*
+void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel pixel, unsigned long long timestamp) {
 	union fb_pixel* target;
+	off_t offset = y * fb->size.width + x;
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
 
-	target = &(fb->pixels[y * fb->size.width + x]);
-	memcpy(target, pixel, sizeof(*pixel));
+//	target = &(fb->pixels[offset]);
+//	memcpy(target, pixel, sizeof(*pixel));
+	fb->pixels[offset] = pixel;
+	fb->timestamps[offset] = timestamp;
 }
+*/
 
 void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red, uint8_t green, uint8_t blue) {
 	union fb_pixel* target;
@@ -126,7 +140,6 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 	struct llist_entry* cursor;
 	struct fb* other;
 	size_t i, fb_size = fb->size.width * fb->size.height;
-	// This needs random reordering for fairness or per pixel timestamps
 	llist_for_each(fbs, cursor) {
 		other = llist_entry_get_value(cursor, struct fb, list);
 		if(fb->size.width != other->size.width || fb->size.height != other->size.height) {
@@ -137,9 +150,13 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 			if(other->pixels[i].color.alpha == 0) {
 				continue;
 			}
-			fb->pixels[i] = other->pixels[i];
+			// TODO: Handle rollovers?
+			if(fb->timestamps[i] < other->timestamps[i]) {
+				fb->pixels[i] = other->pixels[i];
+			}
 			// Reset to fully transparent
 			other->pixels[i].color.alpha = 0;
+			other->timestamps[i] = 0;
 		}
 	}
 	return 0;

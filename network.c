@@ -63,6 +63,7 @@ int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_si
 	net->fb_size = fb_size;
 	pthread_mutex_init(&net->fb_lock, NULL);
 	net->ring_size = ring_size;
+	net->pixel_cnt = 0;
 
 	*network = net;
 
@@ -303,7 +304,7 @@ recv:
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {
-					fb_set_pixel(fb, x, y, &pixel);
+					fb_set_pixel(fb, x, y, pixel, __sync_fetch_and_add(&net->pixel_cnt, 1));
 				} else {
 //					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}

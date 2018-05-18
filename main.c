@@ -55,7 +55,7 @@ int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 }
 
 int main(int argc, char** argv) {
-	int err, opt;
+	int err, opt, i = 0;
 	struct fb* fb;
 	struct llist fb_list;
 	struct sdl* sdl;
@@ -73,6 +73,8 @@ int main(int argc, char** argv) {
 
 	int ringbuffer_size = RINGBUFFER_DEFAULT;
 	int listen_threads = LISTEN_THREADS_DEFAULT;
+
+	unsigned long long pixel_cnt_last = 0;
 
 	struct timespec before, after;
 	long long time_delta;
@@ -188,6 +190,11 @@ int main(int argc, char** argv) {
 		if(time_delta > 0) {
 			usleep(time_delta / 1000UL);
 		}
+		if(++i == screen_update_rate) {
+			printf("%llu pixels/s\n", net->pixel_cnt - pixel_cnt_last);
+			pixel_cnt_last = net->pixel_cnt;
+		}
+		i = i % screen_update_rate;
 	}
 	net_shutdown(net);
 
