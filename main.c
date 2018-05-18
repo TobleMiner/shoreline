@@ -11,11 +11,13 @@
 #include <stdbool.h>
 #include <getopt.h>
 #include <netdb.h>
+#include <time.h>
 
 #include "framebuffer.h"
 #include "sdl.h"
 #include "network.h"
 #include "llist.h"
+#include "util.h"
 
 
 #define PORT_DEFAULT "1234"
@@ -71,6 +73,9 @@ int main(int argc, char** argv) {
 
 	int ringbuffer_size = RINGBUFFER_DEFAULT;
 	int listen_threads = LISTEN_THREADS_DEFAULT;
+
+	struct timespec before, after;
+	long long time_delta;
 
 	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:?")) != -1) {
 		switch(opt) {
@@ -170,13 +175,19 @@ int main(int argc, char** argv) {
 	}
 
 	while(!do_exit) {
+		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
 		if(sdl_update(sdl, resize_cb)) {
 			doshutdown(SIGINT);
 		}
-		usleep(1000000UL / screen_update_rate);
+		clock_gettime(CLOCK_MONOTONIC, &after);
+		time_delta = get_timespec_diff(&after, &before);
+		time_delta = 1000000000UL / screen_update_rate - time_delta;
+		if(time_delta > 0) {
+			usleep(time_delta / 1000UL);
+		}
 	}
 	net_shutdown(net);
 
