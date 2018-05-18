@@ -76,3 +76,23 @@ void llist_remove(struct llist_entry* entry) {
 	entry->list = NULL;
 	llist_unlock(llist);
 }
+
+size_t llist_length(struct llist* list) {
+	size_t len = 0;
+	struct llist_entry* cursor;
+	llist_for_each(list, cursor) {
+		(void)cursor;
+		len++;
+	}
+	return len;
+}
+
+struct llist_entry* llist_get_entry(struct llist* list, unsigned int index) {
+	struct llist_entry* cursor;
+	llist_for_each(list, cursor) {
+		if(!index--) {
+			return cursor;
+		}
+	}
+	return NULL;
+}

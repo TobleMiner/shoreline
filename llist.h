@@ -40,4 +40,7 @@ void llist_free(struct llist* ret);
 void llist_append(struct llist* llist, struct llist_entry* entry);
 void llist_remove(struct llist_entry* entry);
 
+size_t llist_length(struct llist* list);
+struct llist_entry* llist_get_entry(struct llist* list, unsigned int index);
+
 #endif

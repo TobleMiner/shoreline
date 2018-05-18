@@ -1,13 +1,27 @@
 #ifndef _SHORELINE_UTIL_H_
 #define _SHORELINE_UTIL_H_
 
+#include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
 #include <sys/syscall.h>
 
+
 #define container_of(ptr, type, member) ({ \
 	const typeof(((type *)0)->member) * __mptr = (ptr); \
 	(type *)((char *)__mptr - ((size_t) &((type *)0)->member)); })
+
+#define ARRAY_SHUFFLE(arr, len) \
+	{ \
+		typeof((len)) i, j; \
+		typeof(*(arr)) tmp; \
+		for(i = 0; i + 1 < (len); i++) { \
+			j = i + rand() / (RAND_MAX / ((len) - i) + 1); \
+			tmp = (arr)[j]; \
+			(arr)[j] = (arr)[i]; \
+			(arr)[i] = tmp; \
+		} \
+	}
 
 inline unsigned get_numa_node() {
 	unsigned numa_node;

@@ -125,21 +125,26 @@ fail:
 int fb_coalesce(struct fb* fb, struct llist* fbs) {
 	struct llist_entry* cursor;
 	struct fb* other;
-	size_t i, fb_size = fb->size.width * fb->size.height;
-	// This needs random reordering for fairness or per pixel timestamps
-	llist_for_each(fbs, cursor) {
+	size_t i, j, fb_size = fb->size.width * fb->size.height, num_fbs = llist_length(fbs);
+	unsigned int indices[num_fbs];
+	for(i = 0; i < num_fbs; i++) {
+		indices[i] = i;
+	}
+	ARRAY_SHUFFLE(indices, num_fbs);
+	for(i = 0; i < num_fbs; i++) {
+		cursor = llist_get_entry(fbs, indices[i]);
 		other = llist_entry_get_value(cursor, struct fb, list);
 		if(fb->size.width != other->size.width || fb->size.height != other->size.height) {
 			return -EINVAL;
 		}
-		for(i = 0; i < fb_size; i++) {
+		for(j = 0; j < fb_size; j++) {
 			// This type of transparency handling is crap. We should do proper coalescing
-			if(other->pixels[i].color.alpha == 0) {
+			if(other->pixels[j].color.alpha == 0) {
 				continue;
 			}
-			fb->pixels[i] = other->pixels[i];
+			fb->pixels[j] = other->pixels[j];
 			// Reset to fully transparent
-			other->pixels[i].color.alpha = 0;
+			other->pixels[j].color.alpha = 0;
 		}
 	}
 	return 0;
