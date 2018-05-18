@@ -299,7 +299,7 @@ recv:
 				if(x < fbsize->width && y < fbsize->height) {
 					fb_set_pixel(fb, x, y, &pixel);
 				} else {
-					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
+//					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
 				size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
