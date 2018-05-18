@@ -1,5 +1,5 @@
 CC=gcc
-CCFLAGS=-O3 -Wall -ggdb
+CCFLAGS=-Ofast -Wall -march=native
 RM=rm -f
 
 all: clean shoreline
