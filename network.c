@@ -61,6 +61,7 @@ int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_si
 	net->state = NET_STATE_IDLE;
 	net->fb_list = fb_list;
 	net->fb_size = fb_size;
+	pthread_mutex_init(&net->fb_lock, NULL);
 	net->ring_size = ring_size;
 
 	*network = net;
@@ -204,7 +205,7 @@ static void* net_connection_thread(void* args) {
 		container_of(threadargs, struct net_connection_thread, threadargs);
 
 	unsigned numa_node = get_numa_node();
-	struct fb* fb = fb_get_fb_on_node(net->fb_list, numa_node);
+	struct fb* fb;
 	struct fb_size* fbsize;
 	union fb_pixel pixel;
 	unsigned int x, y;
@@ -224,14 +225,19 @@ static void* net_connection_thread(void* args) {
 	char size_info[SIZE_INFO_MAX];
 	int size_info_len;
 
+	pthread_mutex_lock(&net->fb_lock);
+	fb = fb_get_fb_on_node(net->fb_list, numa_node);
 	if(!fb) {
 		printf("Failed to find fb on NUMA node %u, creating new fb\n", numa_node);
 		if(fb_alloc(&fb, net->fb_size->width, net->fb_size->height)) {
 			fprintf(stderr, "Failed to allocate fb on node\n");
 			goto fail;
 		}
+		printf("Allocated fb on NUMA node %u\n", fb->numa_node);
 		llist_append(net->fb_list, &fb->list);
 	}
+	pthread_mutex_unlock(&net->fb_lock);
+
 	fbsize = fb_get_size(fb);
 
 	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
