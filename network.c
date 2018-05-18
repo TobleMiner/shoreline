@@ -304,7 +304,11 @@ recv:
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {
+#ifdef UNSAFE_PIXEL_COUNTERS
+					fb_set_pixel(fb, x, y, pixel, net->pixel_cnt++);
+#else
 					fb_set_pixel(fb, x, y, pixel, __sync_fetch_and_add(&net->pixel_cnt, 1));
+#endif
 				} else {
 //					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}
