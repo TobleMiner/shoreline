@@ -12,8 +12,10 @@
 #include <getopt.h>
 #include <netdb.h>
 #include <time.h>
+#include <stdint.h>
 
 #include "framebuffer.h"
+#include "framebuffer_time.h"
 #include "sdl.h"
 #include "network.h"
 #include "llist.h"
@@ -28,7 +30,11 @@
 #define RINGBUFFER_DEFAULT 65536
 #define LISTEN_THREADS_DEFAULT 10
 
+#define SPINNER_CHECK_INTERVAL 10000000UL
+
 static bool do_exit = false;
+
+volatile uint32_t global_counter = 0;
 
 void doshutdown(int sig)
 {
@@ -41,23 +47,34 @@ void show_usage(char* binary) {
 }
 
 int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
-	struct llist* fb_list = sdl->cb_private;
+	struct llist* fbt_list = sdl->cb_private;
 	struct llist_entry* cursor;
-	struct fb* fb;
+	struct fbt* fb;
 	int err;
-	llist_for_each(fb_list, cursor) {
-		fb = llist_entry_get_value(cursor, struct fb, list);
-		if((err = fb_resize(fb, width, height))) {
+	llist_for_each(fbt_list, cursor) {
+		fb = llist_entry_get_value(cursor, struct fbt, list);
+		if((err = fbt_resize(fb, width, height))) {
 			return err;
 		}
 	}
 	return 0;
 }
 
+void* counter_run(void* args) {
+	(void)args;
+	unsigned long long i;
+	while(true) {
+		for(i = 0; i < SPINNER_CHECK_INTERVAL; i++) {
+			__sync_fetch_and_add(&global_counter, 1);
+		}
+		pthread_testcancel();
+	}
+}
+
 int main(int argc, char** argv) {
 	int err, opt, i = 0;
 	struct fb* fb;
-	struct llist fb_list;
+	struct llist fbt_list;
 	struct sdl* sdl;
 	struct sockaddr_storage* inaddr;
 	struct addrinfo* addr_list;
@@ -78,6 +95,8 @@ int main(int argc, char** argv) {
 
 	struct timespec before, after;
 	long long time_delta;
+
+	pthread_t counter_thread;
 
 	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:?")) != -1) {
 		switch(opt) {
@@ -140,13 +159,13 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-	llist_init(&fb_list);
-	if((err = sdl_alloc(&sdl, fb, &fb_list))) {
+	llist_init(&fbt_list);
+	if((err = sdl_alloc(&sdl, fb, &fbt_list))) {
 		fprintf(stderr, "Failed to create SDL context\n");
 		goto fail_fb;
 	}
 
-	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
+	if((err = net_alloc(&net, &fbt_list, &fb->size, ringbuffer_size))) {
 		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
 		goto fail_sdl;
 	}
@@ -176,11 +195,16 @@ int main(int argc, char** argv) {
 		goto fail_addrinfo;
 	}
 
+	if((err = pthread_create(&counter_thread, NULL, counter_run, NULL))) {
+		fprintf(stderr, "Failed to start spinner: %d => %s\n", err, strerror(err));
+		goto fail_listen;
+	}
+
 	while(!do_exit) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
-		llist_lock(&fb_list);
-		fb_coalesce(fb, &fb_list);
-		llist_unlock(&fb_list);
+		llist_lock(&fbt_list);
+		fb_coalesce(fb, &fbt_list);
+		llist_unlock(&fbt_list);
 		if(sdl_update(sdl, resize_cb)) {
 			doshutdown(SIGINT);
 		}
@@ -196,9 +220,13 @@ int main(int argc, char** argv) {
 		}
 		i = i % screen_update_rate;
 	}
+
+	pthread_cancel(counter_thread);
+
+fail_listen:
 	net_shutdown(net);
 
-	fb_free_all(&fb_list);
+	fbt_free_all(&fbt_list);
 fail_addrinfo:
 	freeaddrinfo(addr_list);
 fail_net:

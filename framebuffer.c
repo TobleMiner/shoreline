@@ -7,6 +7,9 @@
 
 #include "util.h"
 #include "framebuffer.h"
+#include "framebuffer_time.h"
+
+extern volatile uint32_t global_counter;
 
 int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	int err = 0;
@@ -138,10 +141,10 @@ fail:
 
 int fb_coalesce(struct fb* fb, struct llist* fbs) {
 	struct llist_entry* cursor;
-	struct fb* other;
+	struct fbt* other;
 	size_t i, fb_size = fb->size.width * fb->size.height;
 	llist_for_each(fbs, cursor) {
-		other = llist_entry_get_value(cursor, struct fb, list);
+		other = llist_entry_get_value(cursor, struct fbt, list);
 		if(fb->size.width != other->size.width || fb->size.height != other->size.height) {
 			return -EINVAL;
 		}
@@ -151,13 +154,20 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 				continue;
 			}
 			// TODO: Handle rollovers?
-			if(fb->timestamps[i] < other->timestamps[i]) {
-				fb->pixels[i] = other->pixels[i];
+			if(fb->timestamps[i] < other->pixels[i].timestamp) {
+				fb->pixels[i].abgr = other->pixels[i].abgr;
+				fb->timestamps[i] = other->pixels[i].timestamp;
 			}
 			// Reset to fully transparent
 			other->pixels[i].color.alpha = 0;
-			other->timestamps[i] = 0;
+			other->pixels[i].timestamp = 0;
 		}
 	}
+	for(i = 0; i < fb_size; i++) {
+		fb->timestamps[i] = 0;
+	}
+
+	global_counter = 0;
+
 	return 0;
 }

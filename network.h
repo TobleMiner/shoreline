@@ -38,8 +38,8 @@ struct net {
 	unsigned int num_threads;
 	struct net_thread* threads;
 	struct fb_size* fb_size;
-	pthread_mutex_t fb_lock;
-	struct llist* fb_list;
+	pthread_mutex_t fbt_lock;
+	struct llist* fbt_list;
 
 	unsigned long long pixel_cnt;
 };

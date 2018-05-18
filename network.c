@@ -17,6 +17,7 @@
 #include "network.h"
 #include "ring.h"
 #include "framebuffer.h"
+#include "framebuffer_time.h"
 #include "llist.h"
 #include "util.h"
 
@@ -24,6 +25,8 @@
 #define THREAD_NAME_MAX 16
 #define SIZE_INFO_MAX 32
 #define WHITESPACE_SEARCH_GARBAGE_THRESHOLD 32
+
+extern volatile uint32_t global_counter;
 
 /* Theory Of Operation
  * ===================
@@ -50,7 +53,7 @@
  */
 static int one = 1;
 
-int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size) {
+int net_alloc(struct net** network, struct llist* fbt_list, struct fb_size* fb_size, size_t ring_size) {
 	int err = 0;
 	struct net* net = malloc(sizeof(struct net));
 	if(!net) {
@@ -59,9 +62,9 @@ int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_si
 	}
 
 	net->state = NET_STATE_IDLE;
-	net->fb_list = fb_list;
+	net->fbt_list = fbt_list;
 	net->fb_size = fb_size;
-	pthread_mutex_init(&net->fb_lock, NULL);
+	pthread_mutex_init(&net->fbt_lock, NULL);
 	net->ring_size = ring_size;
 	net->pixel_cnt = 0;
 
@@ -206,14 +209,15 @@ static void* net_connection_thread(void* args) {
 		container_of(threadargs, struct net_connection_thread, threadargs);
 
 	unsigned numa_node = get_numa_node();
-	struct fb* fb;
+	struct fbt* fb;
 	struct fb_size* fbsize;
-	union fb_pixel pixel;
+	struct fbt_pixel pixel;
 	unsigned int x, y;
 
 	off_t offset;
 	ssize_t read_len, write_len, write_cnt;
 	char* last_cmd;
+	uint32_t local_counter;
 
 	/*
 		A small ring buffer (64kB * 64k connections = ~4GB at max) to prevent memmoves.
@@ -226,20 +230,20 @@ static void* net_connection_thread(void* args) {
 	char size_info[SIZE_INFO_MAX];
 	int size_info_len;
 
-	pthread_mutex_lock(&net->fb_lock);
-	fb = fb_get_fb_on_node(net->fb_list, numa_node);
+	pthread_mutex_lock(&net->fbt_lock);
+	fb = fbt_get_fb_on_node(net->fbt_list, numa_node);
 	if(!fb) {
-		printf("Failed to find fb on NUMA node %u, creating new fb\n", numa_node);
-		if(fb_alloc(&fb, net->fb_size->width, net->fb_size->height)) {
-			fprintf(stderr, "Failed to allocate fb on node\n");
+		printf("Failed to find fbt on NUMA node %u, creating new fbt\n", numa_node);
+		if(fbt_alloc(&fb, net->fb_size->width, net->fb_size->height)) {
+			fprintf(stderr, "Failed to allocate fbt on node\n");
 			goto fail;
 		}
-		printf("Allocated fb on NUMA node %u\n", fb->numa_node);
-		llist_append(net->fb_list, &fb->list);
+		printf("Allocated fbt on NUMA node %u\n", fb->numa_node);
+		llist_append(net->fbt_list, &fb->list);
 	}
-	pthread_mutex_unlock(&net->fb_lock);
+	pthread_mutex_unlock(&net->fbt_lock);
 
-	fbsize = fb_get_size(fb);
+	fbsize = fbt_get_size(fb);
 
 	pthread_cleanup_push(net_connection_thread_cleanup_self, thread);
 	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
@@ -266,6 +270,9 @@ recv:
 //		printf("Read %zd bytes\n", read_len);
 		ring_advance_write(ring, read_len);
 
+		// All of the handling code below will execute in a very short amount of time.
+		// Use same timestamp for all pixels received
+		local_counter = global_counter;
 		while(ring_any_available(ring)) {
 			last_cmd = ring->ptr_read;
 
@@ -304,11 +311,8 @@ recv:
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {
-#ifdef UNSAFE_PIXEL_COUNTERS
-					fb_set_pixel(fb, x, y, pixel, net->pixel_cnt++);
-#else
-					fb_set_pixel(fb, x, y, pixel, __sync_fetch_and_add(&net->pixel_cnt, 1));
-#endif
+					pixel.timestamp = local_counter;
+					fbt_set_pixel(fb, x, y, pixel);
 				} else {
 //					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}
