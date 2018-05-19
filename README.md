@@ -38,6 +38,6 @@ locality of the buffers.
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
 
-On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 EEC memory @2666 MHz, 6 memory channels) we are at about 37 Gbit/s
+On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 ECC memory @2666 MHz, 6 memory channels) we are at about 37 Gbit/s
 
 These results were obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
