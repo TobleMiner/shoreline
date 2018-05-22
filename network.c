@@ -55,7 +55,7 @@ static int one = 1;
 
 int net_alloc(struct net** network, struct llist* fbt_list, struct fb_size* fb_size, size_t ring_size) {
 	int err = 0;
-	struct net* net = malloc(sizeof(struct net));
+	struct net* net = calloc(1, sizeof(struct net));
 	if(!net) {
 		err = -ENOMEM;
 		goto fail;
@@ -78,7 +78,9 @@ fail:
 
 void net_free(struct net* net) {
 	assert(net->state == NET_STATE_EXIT || net->state == NET_STATE_IDLE);
-	free(net->threads);
+	if(net->threads) {
+		free(net->threads);
+	}
 	free(net);
 }
 
