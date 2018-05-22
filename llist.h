@@ -19,7 +19,9 @@ struct llist_entry {
 	struct llist* list;
 };
 
-#define LLIST_ENTRY_INIT { NULL, NULL, NULL }
+#define LLIST_ENTRY_INIT ((struct llist_entry){ NULL, NULL, NULL })
+
+#define llist_is_empty(list) (llist_length(list) == 0)
 
 #define llist_entry_get_value(entry, type, member) \
 	container_of(entry, type, member)
@@ -39,5 +41,8 @@ void llist_free(struct llist* ret);
 
 void llist_append(struct llist* llist, struct llist_entry* entry);
 void llist_remove(struct llist_entry* entry);
+
+size_t llist_length(struct llist* list);
+struct llist_entry* llist_get_entry(struct llist* list, unsigned int index);
 
 #endif

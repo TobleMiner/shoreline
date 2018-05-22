@@ -8,11 +8,22 @@
 
 #include "sdl.h"
 #include "framebuffer.h"
+#include "frontend.h"
+#include "util.h"
 
 #define SL_PXFMT SDL_PIXELFORMAT_RGBA8888
 
-int sdl_alloc(struct sdl** ret, struct fb* fb) {
+static const struct frontend_ops fops = {
+	.alloc = sdl_alloc,
+	.free = sdl_free,
+	.update = sdl_update,
+};
+
+DECLARE_FRONTEND_NOSIG(front_sdl, "SDL2 Frontend", fops);
+
+int sdl_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
+	struct sdl_param* params = priv;
 	struct sdl* sdl = malloc(sizeof(struct sdl));
 	struct fb_size* size;
 	if(!sdl) {
@@ -22,6 +33,9 @@ int sdl_alloc(struct sdl** ret, struct fb* fb) {
 
 	sdl->fb = fb;
 	size = fb_get_size(fb);
+
+	sdl->cb_private = params->cb_private;
+	sdl->resize_cb = params->resize_cb;
 
 	SDL_SetHint(SDL_HINT_NO_SIGNAL_HANDLERS, "1");
 
@@ -62,7 +76,7 @@ int sdl_alloc(struct sdl** ret, struct fb* fb) {
 		goto fail_sdl_renderer;
 	}
 
-	*ret = sdl;
+	*ret = &sdl->front;
 
 	return 0;
 
@@ -78,7 +92,8 @@ fail:
 	return err;
 };
 
-void sdl_free(struct sdl* sdl) {
+void sdl_free(struct frontend* front) {
+	struct sdl* sdl = container_of(front, struct sdl, front);
 	SDL_DestroyTexture(sdl->texture);
 	SDL_DestroyRenderer(sdl->renderer);
 	SDL_DestroyWindow(sdl->window);
@@ -87,10 +102,11 @@ void sdl_free(struct sdl* sdl) {
 }
 
 
-int sdl_update(struct sdl* sdl) {
+int sdl_update(struct frontend* front) {
+	struct sdl* sdl = container_of(front, struct sdl, front);
 	struct fb_size* size = fb_get_size(sdl->fb);
 
-	int width, height;
+	int width, height, err;
 	SDL_Window* window;
 	SDL_Texture* texture;
 	SDL_Event event;
@@ -105,6 +121,12 @@ int sdl_update(struct sdl* sdl) {
 				assert(width >= 0);
 				assert(height >= 0);
 				printf("Resizing to %dx%d px\n", width, height);
+
+				if(sdl->resize_cb) {
+					if((err = sdl->resize_cb(sdl, width, height))) {
+						return err;
+					}
+				}
 
 				texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT,
 					SDL_TEXTUREACCESS_STREAMING, width, height);

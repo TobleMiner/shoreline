@@ -4,6 +4,11 @@
 #include <SDL.h>
 
 #include "framebuffer.h"
+#include "frontend.h"
+
+struct sdl;
+
+typedef int (*sdl_cb_resize)(struct sdl* sdl, unsigned int width, unsigned int height);
 
 struct sdl {
 	SDL_Window* window;
@@ -11,12 +16,20 @@ struct sdl {
 	SDL_Texture* texture;
 
 	struct fb* fb;
+
+	sdl_cb_resize resize_cb;
+	void* cb_private;
+	struct frontend front;
 };
 
-int sdl_alloc(struct sdl** ret, struct fb* fb);
-void sdl_free(struct sdl* sdl);
 
-int sdl_update(struct sdl* sdl);
+struct sdl_param {
+	void* cb_private;
+	sdl_cb_resize resize_cb;
+};
 
+int sdl_alloc(struct frontend** ret, struct fb* fb, void* c);
+void sdl_free(struct frontend* front);
+int sdl_update(struct frontend* front);
 
 #endif

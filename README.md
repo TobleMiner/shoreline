@@ -27,8 +27,17 @@ Shoreline provides a SDL window for drawing. There are a few commandline switche
 -l <listen threads>	Number of threads used to listen for incoming connections (default 10)
 ```
 
+## Resizing
+
+While you can resize the shoreline output window while running doing so might significantly reduce the performance of the numa shoreline version until shoreline is restarted.
+This bug exists because shoreline normally takes great care to allocate memory used by threads on memory sticks directly connected to the cores running the threads. But when
+the window is resized the resize event is handled by the main thread. This leads to the main thread reallocating the framebuffers used by the threads, destroying the cpu node
+locality of the buffers.
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
 
-This result was obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
+On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 ECC memory @2666 MHz, 6 memory channels) we are at about 37 Gbit/s
+
+These results were obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
