@@ -41,6 +41,7 @@ int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	format->blueShift = 8;
 
 	vnc->server->frameBuffer = (char *)fb->pixels;
+	vnc->server->desktopName = "shoreline";
 	vnc->server->alwaysShared = TRUE;
 
 	rfbInitServer(vnc->server);
