@@ -15,6 +15,7 @@
 
 #include "framebuffer.h"
 #include "sdl.h"
+#include "vnc.h"
 #include "network.h"
 #include "llist.h"
 #include "util.h"
@@ -37,7 +38,7 @@ void doshutdown(int sig)
 }
 
 void show_usage(char* binary) {
-	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>]\n", binary);
+	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-V]\n", binary);
 }
 
 int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
@@ -58,11 +59,13 @@ int main(int argc, char** argv) {
 	int err, opt;
 	struct fb* fb;
 	struct llist fb_list;
-	struct sdl* sdl;
+	struct sdl* sdl = NULL;
+	struct vnc* vnc = NULL;
 	struct sockaddr_storage* inaddr;
 	struct addrinfo* addr_list;
 	struct net* net;
 	size_t addr_len;
+	bool use_vnc = false;
 
 	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
@@ -77,7 +80,7 @@ int main(int argc, char** argv) {
 	struct timespec before, after;
 	long long time_delta;
 
-	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:?")) != -1) {
+	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:V?")) != -1) {
 		switch(opt) {
 			case('p'):
 				port = optarg;
@@ -125,6 +128,9 @@ int main(int argc, char** argv) {
 					goto fail;
 				}
 				break;
+			case('V'):
+				use_vnc = true;
+				break;
 			default:
 				show_usage(argv[0]);
 				err = -EINVAL;
@@ -139,27 +145,33 @@ int main(int argc, char** argv) {
 	}
 
 	llist_init(&fb_list);
-	if((err = sdl_alloc(&sdl, fb, &fb_list))) {
-		fprintf(stderr, "Failed to create SDL context\n");
-		goto fail_fb;
+	if(use_vnc) {
+		if((err = vnc_alloc(&vnc, fb))) {
+			fprintf(stderr, "Failed to create VNC context\n");
+			goto fail_fb;
+		}
+	} else {
+		if((err = sdl_alloc(&sdl, fb, &fb_list))) {
+			fprintf(stderr, "Failed to create SDL context\n");
+			goto fail_fb;
+		}
 	}
 
 	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
 		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
 		goto fail_sdl;
 	}
-
-	if(signal(SIGINT, doshutdown))
-	{
-		fprintf(stderr, "Failed to bind signal\n");
-		err = -EINVAL;
-		goto fail_net;
-	}
-	if(signal(SIGPIPE, SIG_IGN))
-	{
-		fprintf(stderr, "Failed to bind signal\n");
-		err = -EINVAL;
-		goto fail_net;
+	if(!use_vnc) {
+		if(signal(SIGINT, doshutdown)) {
+			fprintf(stderr, "Failed to bind signal\n");
+			err = -EINVAL;
+			goto fail_net;
+		}
+		if(signal(SIGPIPE, SIG_IGN)) {
+			fprintf(stderr, "Failed to bind signal\n");
+			err = -EINVAL;
+			goto fail_net;
+		}
 	}
 
 	if((err = -getaddrinfo(listen_address, port, NULL, &addr_list))) {
@@ -174,13 +186,17 @@ int main(int argc, char** argv) {
 		goto fail_addrinfo;
 	}
 
-	while(!do_exit) {
+	while(use_vnc ? rfbIsActive(vnc->server) : !do_exit) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
-		if(sdl_update(sdl, resize_cb)) {
-			doshutdown(SIGINT);
+		if(use_vnc) {
+			rfbMarkRectAsModified(vnc->server, 0, 0, fb->size.width, fb->size.height);
+		} else {
+			if(sdl_update(sdl, resize_cb)) {
+				doshutdown(SIGINT);
+			}
 		}
 		clock_gettime(CLOCK_MONOTONIC, &after);
 		time_delta = get_timespec_diff(&after, &before);
@@ -197,7 +213,11 @@ fail_addrinfo:
 fail_net:
 	net_free(net);
 fail_sdl:
-	sdl_free(sdl);
+	if(vnc) {
+		vnc_free(vnc);
+	} else {
+		sdl_free(sdl);
+	}
 fail_fb:
 	fb_free(fb);
 fail:

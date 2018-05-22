@@ -301,7 +301,7 @@ recv:
 					pixel.abgr = net_str_to_uint32_16(ring, offset);
 				} else {
 					pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
-					pixel.color.alpha = 255;
+					pixel.color.alpha = 0xFF;
 				}
 //				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {

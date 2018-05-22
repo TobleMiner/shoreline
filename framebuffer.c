@@ -20,7 +20,7 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	fb->size.width = width;
 	fb->size.height = height;
 
-	fb->pixels = malloc(width * height * sizeof(union fb_pixel));
+	fb->pixels = calloc(width * height, sizeof(union fb_pixel));
 	if(!fb->pixels) {
 		err = -ENOMEM;
 		goto fail_fb;
