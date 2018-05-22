@@ -25,7 +25,7 @@ int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 
 	vnc->server = rfbGetScreen(NULL, NULL, size->width, size->height, 8, 3, 4);
 	if(!vnc->server) {
-			err = -ENOMEM;
+		err = -ENOMEM;
 		goto fail_vnc;
 	}
 
