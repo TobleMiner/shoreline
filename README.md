@@ -9,13 +9,16 @@ A very fast pixelflut server with full IPv6 support written in C
 
 * SDL2
 * libpthread
+* libvncserver
 
 Use ```make``` to build shoreline
 
 
 # Usage
 
-Shoreline provides a SDL window for drawing. There are a few commandline switches:
+By default Shoreline runs in headless mode. In headless mode all user frontends are disabled. Use ```shoreline -f sdl``` to get a sdl window for drawing
+
+There are a few more commandline switches:
 
 ```
 -p <port>		Port to listen on (default 1234)
@@ -25,6 +28,7 @@ Shoreline provides a SDL window for drawing. There are a few commandline switche
 -r <update rate>	Screen update rate in HZ (default 60)
 -s <ring size>		Size of network ring buffer in bytes (default 65536)
 -l <listen threads>	Number of threads used to listen for incoming connections (default 10)
+-f <frontend>		Frontend to use as a display. May be specified multiple times. Use -f ? to list available frontends
 ```
 
 ## Resizing
