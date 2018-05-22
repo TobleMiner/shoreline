@@ -3,9 +3,15 @@
 #include "vnc.h"
 #include "framebuffer.h"
 
-#define SL_PXFMT SDL_PIXELFORMAT_RGBA8888
+static const struct frontend_ops fops = {
+	.alloc = vnc_alloc,
+	.free = vnc_free,
+	.update = vnc_update,
+};
 
-int vnc_alloc(struct vnc** ret, struct fb* fb) {
+DECLARE_FRONTEND_SIG(front_vnc, "VNC server frontend", fops);
+
+int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
 	struct vnc* vnc = malloc(sizeof(struct vnc));
 	struct fb_size* size;
@@ -40,7 +46,7 @@ int vnc_alloc(struct vnc** ret, struct fb* fb) {
 	rfbInitServer(vnc->server);
 	rfbRunEventLoop(vnc->server, -1, TRUE);
 
-	*ret = vnc;
+	*ret = &vnc->front;
 
 	return 0;
 
@@ -50,8 +56,15 @@ fail:
 	return err;
 };
 
-void vnc_free(struct vnc* vnc) {
+void vnc_free(struct frontend* front) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
 	rfbShutdownServer(vnc->server, TRUE);
 	rfbScreenCleanup(vnc->server);
 	free(vnc);
+}
+
+int vnc_update(struct frontend* front) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	rfbMarkRectAsModified(vnc->server, 0, 0, vnc->fb->size.width, vnc->fb->size.height);
+	return !rfbIsActive(vnc->server);
 }
