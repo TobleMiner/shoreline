@@ -24,7 +24,7 @@ struct frontend_ops {
 
 struct frontend_def {
 	char* name;
-	struct frontend_ops ops;
+	const struct frontend_ops* ops;
 	bool handles_signals;
 };
 

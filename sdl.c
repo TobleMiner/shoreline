@@ -19,7 +19,7 @@ static const struct frontend_ops fops = {
 	.update = sdl_update,
 };
 
-DECLARE_FRONTEND_NOSIG(front_sdl, "SDL2 Frontend", fops);
+DECLARE_FRONTEND_NOSIG(front_sdl, "SDL2 Frontend", &fops);
 
 int sdl_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;

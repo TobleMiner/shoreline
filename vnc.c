@@ -9,7 +9,7 @@ static const struct frontend_ops fops = {
 	.update = vnc_update,
 };
 
-DECLARE_FRONTEND_SIG(front_vnc, "VNC server frontend", fops);
+DECLARE_FRONTEND_SIG(front_vnc, "VNC server frontend", &fops);
 
 int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
