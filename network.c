@@ -13,6 +13,7 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <netdb.h>
+#include <sched.h>
 
 #include "network.h"
 #include "ring.h"
@@ -226,6 +227,18 @@ static void* net_connection_thread(void* args) {
 
 	char size_info[SIZE_INFO_MAX];
 	int size_info_len;
+
+	cpu_set_t nodemask;
+	int cpuid = sched_getcpu();
+	if(cpuid < 0) {
+		fprintf(stderr, "Failed to get cpuid of network thread, continuing without affinity setting\n");
+	} else {
+		CPU_ZERO(&nodemask);
+		CPU_SET(cpuid, &nodemask);
+		if((err = pthread_setaffinity_np(thread->thread, sizeof(nodemask), &nodemask))) {
+			fprintf(stderr, "Failed to set cpu affinity, continuing without affinity setting: %s (%d)\n", strerror(err), err);
+		}
+	}
 
 	pthread_mutex_lock(&net->fb_lock);
 	fb = fb_get_fb_on_node(net->fb_list, numa_node);
