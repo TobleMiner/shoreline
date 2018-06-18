@@ -37,6 +37,10 @@ struct frontend_def {
 #define DECLARE_FRONTEND_NOSIG(name, frontname, frontops) \
 	DECLARE_FRONTEND(name, frontname, frontops, false)
 
+#define frontend_alloc(def, front, fb, priv) ((def)->ops->alloc((front), (fb), (priv)))
+#define frontend_free(front) ((front)->def->ops->free((front)))
+#define frontend_update(front) ((front)->def->ops->update((front)))
+
 struct frontend {
 	struct frontend_def* def;
 	struct llist_entry list;

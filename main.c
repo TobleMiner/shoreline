@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
 		}
 		free(frontid);
 		handle_signals = handle_signals && !frontdef->handles_signals;
-		if((err = frontdef->ops->alloc(&front, fb, &sdl_param))) {
+		if((err = frontend_alloc(frontdef, &front, fb, &sdl_param))) {
 			fprintf(stderr, "Failed to allocate frontend '%s'\n", frontdef->name);
 			goto fail_fronts;
 		}
@@ -251,7 +251,7 @@ int main(int argc, char** argv) {
 		llist_unlock(&fb_list);
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
-			if(front->def->ops->update(front)) {
+			if(frontend_update(front)) {
 				doshutdown(SIGINT);
 				break;
 			}
@@ -274,7 +274,7 @@ fail_fronts:
 	llist_for_each(&fronts, cursor) {
 		front = llist_entry_get_value(cursor, struct frontend, list);
 		printf("Shutting down frontend '%s'\n", front->def->name);
-		front->def->ops->free(front);
+		frontend_free(front);
 	}
 //fail_fb:
 	fb_free(fb);
