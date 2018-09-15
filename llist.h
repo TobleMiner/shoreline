@@ -21,7 +21,7 @@ struct llist_entry {
 
 #define LLIST_ENTRY_INIT ((struct llist_entry){ NULL, NULL, NULL })
 
-#define llist_is_empty(list) (llist_length(list) == 0)
+#define llist_is_empty(list) (!(list)->head)
 
 #define llist_entry_get_value(entry, type, member) \
 	container_of(entry, type, member)
