@@ -1,5 +1,10 @@
 CC ?= gcc
-CCFLAGS = -Ofast -Wall -march=native -D_GNU_SOURCE
+CCFLAGS = -Wall -D_GNU_SOURCE
+ifeq ($(DEBUG),1)
+CCFLAGS += -O1 -ggdb
+else
+CCFLAGS += -Ofast -march=native
+endif
 RM = rm -f
 DEPS = sdl2 libvncserver
 DEPFLAGS_CC = `pkg-config --cflags $(DEPS)`
