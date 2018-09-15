@@ -20,6 +20,7 @@
 #include "llist.h"
 #include "util.h"
 #include "frontend.h"
+#include "workqueue.h"
 
 
 #define PORT_DEFAULT "1234"
@@ -71,18 +72,47 @@ void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>]\n", binary);
 }
 
+struct resize_wq_priv {
+	struct fb* fb;
+	struct fb_size size;
+};
+
+int resize_wq_cb(void* priv) {
+	struct resize_wq_priv* resize_priv = priv;
+	return fb_resize(resize_priv->fb, resize_priv->size.width, resize_priv->size.height);
+}
+
+void resize_wq_cleanup(int err, void* priv) {
+	free(priv);
+}
+
 int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 	struct llist* fb_list = sdl->cb_private;
 	struct llist_entry* cursor;
 	struct fb* fb;
 	int err;
+
 	llist_for_each(fb_list, cursor) {
+		struct resize_wq_priv* resize_priv = malloc(sizeof(struct resize_wq_priv));
+		if(!resize_priv) {
+			err = -ENOMEM;
+			goto fail;
+		}
+
+		resize_priv->size.width = width;
+		resize_priv->size.height = height;
 		fb = llist_entry_get_value(cursor, struct fb, list);
-		if((err = fb_resize(fb, width, height))) {
-			return err;
+		resize_priv->fb = fb;
+
+		// TODO: Add error callback
+		if((err = workqueue_enqueue(fb->numa_node, resize_priv, resize_wq_cb, NULL, resize_wq_cleanup))) {
+			free(resize_priv);
+			goto fail;
 		}
 	}
-	return 0;
+
+fail:
+	return err;
 }
 
 int main(int argc, char** argv) {
@@ -187,6 +217,11 @@ int main(int argc, char** argv) {
 		printf("WARNING: No frontends specified, continuing without any frontends\n");
 	}
 
+	if((err = workqueue_init())) {
+		fprintf(stderr, "Failed to initialize workqueues: %d => %s\n", err, strerror(-err));
+		goto fail;
+	}
+
 	if((err = fb_alloc(&fb, width, height))) {
 		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
 		goto fail;
@@ -282,5 +317,6 @@ fail:
 	while(frontend_cnt > 0 && frontend_cnt--) {
 		free(frontend_names[frontend_cnt]);
 	}
+	workqueue_deinit();
 	return err;
 }
