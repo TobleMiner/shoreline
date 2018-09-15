@@ -10,6 +10,7 @@ A very fast pixelflut server with full IPv6 support written in C
 * SDL2
 * libpthread
 * libvncserver
+* libnuma (numactl)
 
 Use ```make``` to build shoreline
 
@@ -30,13 +31,6 @@ There are a few more commandline switches:
 -l <listen threads>	Number of threads used to listen for incoming connections (default 10)
 -f <frontend>		Frontend to use as a display. May be specified multiple times. Use -f ? to list available frontends
 ```
-
-## Resizing
-
-While you can resize the shoreline output window while running doing so might significantly reduce the performance of the numa shoreline version until shoreline is restarted.
-This bug exists because shoreline normally takes great care to allocate memory used by threads on memory sticks directly connected to the cores running the threads. But when
-the window is resized the resize event is handled by the main thread. This leads to the main thread reallocating the framebuffers used by the threads, destroying the cpu node
-locality of the buffers.
 
 # Performance
 
