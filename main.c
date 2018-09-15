@@ -82,6 +82,11 @@ int resize_wq_cb(void* priv) {
 	return fb_resize(resize_priv->fb, resize_priv->size.width, resize_priv->size.height);
 }
 
+int resize_wq_err(int err, void* priv) {
+	doshutdown(SIGTERM);
+	return err;
+}
+
 void resize_wq_cleanup(int err, void* priv) {
 	free(priv);
 }
@@ -105,7 +110,7 @@ int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 		resize_priv->fb = fb;
 
 		// TODO: Add error callback
-		if((err = workqueue_enqueue(fb->numa_node, resize_priv, resize_wq_cb, NULL, resize_wq_cleanup))) {
+		if((err = workqueue_enqueue(fb->numa_node, resize_priv, resize_wq_cb, resize_wq_err, resize_wq_cleanup))) {
 			free(resize_priv);
 			goto fail;
 		}
