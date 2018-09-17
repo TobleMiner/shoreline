@@ -62,7 +62,7 @@ void doshutdown(int sig)
 }
 
 void show_usage(char* binary) {
-	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>]\n", binary);
+	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-d]\n", binary);
 }
 
 struct resize_wq_priv {
@@ -128,6 +128,7 @@ int main(int argc, char** argv) {
 	unsigned int frontend_cnt = 0;
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
+	bool show_repo_url = true;
 
 	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
@@ -142,7 +143,7 @@ int main(int argc, char** argv) {
 	struct timespec before, after;
 	long long time_delta;
 
-	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:?")) != -1) {
+	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:d?")) != -1) {
 		switch(opt) {
 			case('p'):
 				port = optarg;
@@ -203,6 +204,9 @@ int main(int argc, char** argv) {
 					goto fail;
 				}
 				frontend_cnt++;
+				break;
+			case('d'):
+				show_repo_url = false;
 				break;
 			default:
 				show_usage(argv[0]);
@@ -299,7 +303,7 @@ int main(int argc, char** argv) {
 		llist_unlock(&fb_list);
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
-			if(frontend_can_draw_string(front)) {
+			if(show_repo_url && frontend_can_draw_string(front)) {
 				frontend_draw_string(front, 0, 20, "https://github.com/TobleMiner/shoreline");
 			}
 			if(frontend_update(front)) {
