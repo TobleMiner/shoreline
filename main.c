@@ -35,30 +35,23 @@
 
 static bool do_exit = false;
 
-extern struct frontend_def front_sdl;
-extern struct frontend_def front_vnc;
-
-struct frontend_id frontends[] = {
-	{ "sdl", &front_sdl },
-	{ "vnc", &front_vnc },
-	{ NULL, NULL }
-};
-
-struct frontend_def* get_frontend_def(char* id) {
-	struct frontend_id* front = frontends;
-	for(; front->def != NULL; front++) {
-		if(strcmp(id, front->id) == 0) {
-			return front->def;
-		}
-	}
-	return NULL;
-}
+extern struct frontend_id frontends[];
 
 void show_frontends() {
 	fprintf(stderr, "Available frontends:\n");
 	struct frontend_id* front = frontends;
 	for(; front->def != NULL; front++) {
-		fprintf(stderr, "\t%s: %s\n", front->id, front->def->name);
+		const struct frontend_arg* options = front->def->args;
+		fprintf(stderr, "\t%s: %s ", front->id, front->def->name);
+		if(options) {
+			fprintf(stderr, "(Options: ");
+			while(strlen(options->name)) {
+				fprintf(stderr, "%s ", options->name);
+				options++;
+			}
+			fprintf(stderr, ")");
+		}
+		fprintf(stderr, "\n");
 	}
 }
 
@@ -95,7 +88,7 @@ int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 	struct llist* fb_list = sdl->cb_private;
 	struct llist_entry* cursor;
 	struct fb* fb;
-	int err;
+	int err = 0;
 
 	llist_for_each(fb_list, cursor) {
 		struct resize_wq_priv* resize_priv = malloc(sizeof(struct resize_wq_priv));
@@ -205,7 +198,7 @@ int main(int argc, char** argv) {
 				}
 				frontend_names[frontend_cnt] = strdup(optarg);
 				if(!frontend_names[frontend_cnt]) {
-					fprintf(stderr, "Can not copy frontend name. Out of memory\n");
+					fprintf(stderr, "Can not copy frontend spec. Out of memory\n");
 					err = -ENOMEM;
 					goto fail;
 				}
@@ -238,21 +231,36 @@ int main(int argc, char** argv) {
 	llist_init(&fronts);
 	while(frontend_cnt > 0 && frontend_cnt--) {
 		char* frontid = frontend_names[frontend_cnt];
-		struct frontend_def* frontdef = get_frontend_def(frontid);
+		char* options = frontend_spec_extract_name(frontid);
+		struct frontend_def* frontdef = frontend_get_def(frontid);
 		if(!frontdef) {
 			fprintf(stderr, "Unknown frontend '%s'\n", frontid);
 			show_frontends();
-			frontend_cnt++;
-			goto fail_fronts;
+			goto fail_fronts_free_name;
 		}
-		free(frontid);
 		handle_signals = handle_signals && !frontdef->handles_signals;
 		if((err = frontend_alloc(frontdef, &front, fb, &sdl_param))) {
 			fprintf(stderr, "Failed to allocate frontend '%s'\n", frontdef->name);
-			goto fail_fronts;
+			goto fail_fronts_free_name;
 		}
 		front->def = frontdef;
 		llist_append(&fronts, &front->list);
+
+		if(frontend_can_configure(front) && options) {
+			if((err = frontend_configure(front, options))) {
+				fprintf(stderr, "Failed to configure frontend '%s'\n", frontdef->name);
+				goto fail_fronts_free_name;
+			}
+		}
+
+		if(frontend_can_start(front)) {
+			if((err = frontend_start(front))) {
+				fprintf(stderr, "Failed to start frontend '%s'\n", frontdef->name);
+				goto fail_fronts_free_name;
+			}
+		}
+
+		free(frontid);
 	}
 
 	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
@@ -291,6 +299,9 @@ int main(int argc, char** argv) {
 		llist_unlock(&fb_list);
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
+			if(frontend_can_draw_string(front)) {
+				frontend_draw_string(front, 0, 20, "https://github.com/TobleMiner/shoreline");
+			}
 			if(frontend_update(front)) {
 				doshutdown(SIGINT);
 				break;
@@ -324,4 +335,8 @@ fail:
 	}
 	workqueue_deinit();
 	return err;
+
+fail_fronts_free_name:
+	frontend_cnt++;
+	goto fail_fronts;
 }
