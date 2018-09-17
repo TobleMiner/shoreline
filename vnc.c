@@ -88,8 +88,8 @@ int vnc_draw_string(struct frontend* front, unsigned x, unsigned y, char* str) {
 	if(vnc->font) {
 		space = rfbWidthOfString(vnc->font, " ");
 		width = rfbWidthOfString(vnc->font, str);
-		rfbDrawString(vnc->server, vnc->font, x, y, str, 0xffffff);
-//	rfbDrawStringWithClip(vnc->server, font, x + space, y, str, x, y, x + width + 2 * space, y + 20, 0xffffff, 0x000000);
+		rfbFillRect(vnc->server, x, y - 20, x + width + 2 * space, y, 0x00000000);
+		rfbDrawString(vnc->server, vnc->font, x + space, y, str, 0xffffffff);
 	}
 	return 0;
 }
