@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
 			if(show_repo_url && frontend_can_draw_string(front)) {
-				frontend_draw_string(front, 0, 20, "https://github.com/TobleMiner/shoreline");
+				frontend_draw_string(front, 0, 0, "https://github.com/TobleMiner/shoreline");
 			}
 			if(frontend_update(front)) {
 				doshutdown(SIGINT);

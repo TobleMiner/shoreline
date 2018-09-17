@@ -6,6 +6,8 @@
 #include "framebuffer.h"
 #include "frontend.h"
 
+#define VNC_FONT_HEIGHT 16
+
 struct vnc {
 	rfbScreenInfoPtr server;
 	rfbFontDataPtr font;
