@@ -21,7 +21,7 @@ DECLARE_FRONTEND_SIG_ARGS(front_vnc, "VNC server frontend", &fops, fargs);
 
 int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
-	struct vnc* vnc = malloc(sizeof(struct vnc));
+	struct vnc* vnc = calloc(1, sizeof(struct vnc));
 	struct fb_size* size;
 	if(!vnc) {
 		err = -ENOMEM;
