@@ -5,11 +5,19 @@
 
 static const struct frontend_ops fops = {
 	.alloc = vnc_alloc,
+	.start = vnc_start,
 	.free = vnc_free,
 	.update = vnc_update,
+	.draw_string = vnc_draw_string,
 };
 
-DECLARE_FRONTEND_SIG(front_vnc, "VNC server frontend", &fops);
+static const struct frontend_arg fargs[] = {
+	{ .name = "port", .configure = vnc_configure_port },
+	{ .name = "font", .configure = vnc_configure_font },
+	{ .name = "", .configure = NULL },
+};
+
+DECLARE_FRONTEND_SIG_ARGS(front_vnc, "VNC server frontend", &fops, fargs);
 
 int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
@@ -44,9 +52,6 @@ int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	vnc->server->desktopName = "shoreline";
 	vnc->server->alwaysShared = TRUE;
 
-	rfbInitServer(vnc->server);
-	rfbRunEventLoop(vnc->server, -1, TRUE);
-
 	*ret = &vnc->front;
 
 	return 0;
@@ -56,6 +61,13 @@ fail_vnc:
 fail:
 	return err;
 };
+
+int vnc_start(struct frontend* front) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	rfbInitServer(vnc->server);
+	rfbRunEventLoop(vnc->server, -1, TRUE);
+	return 0;
+}
 
 void vnc_free(struct frontend* front) {
 	struct vnc* vnc = container_of(front, struct vnc, front);
@@ -68,4 +80,47 @@ int vnc_update(struct frontend* front) {
 	struct vnc* vnc = container_of(front, struct vnc, front);
 	rfbMarkRectAsModified(vnc->server, 0, 0, vnc->fb->size.width, vnc->fb->size.height);
 	return !rfbIsActive(vnc->server);
+}
+
+int vnc_draw_string(struct frontend* front, unsigned x, unsigned y, char* str) {
+	int space, width;
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	if(vnc->font) {
+		space = rfbWidthOfString(vnc->font, " ");
+		width = rfbWidthOfString(vnc->font, str);
+		rfbDrawString(vnc->server, vnc->font, x, y, str, 0xffffff);
+//	rfbDrawStringWithClip(vnc->server, font, x + space, y, str, x, y, x + width + 2 * space, y + 20, 0xffffff, 0x000000);
+	}
+	return 0;
+}
+
+int vnc_configure_port(struct frontend* front, char* value) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	if(!value) {
+		return -EINVAL;
+	}
+
+	int port = atoi(value);
+	if(port < 0 || port > 65535) {
+		return -EINVAL;
+	}
+
+	vnc->server->port = vnc->server->ipv6port = port;
+	vnc->server->autoPort = FALSE;
+
+	return 0;
+}
+
+int vnc_configure_font(struct frontend* front, char* value) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	if(!value) {
+		return -EINVAL;
+	}
+
+	vnc->font = rfbLoadConsoleFont(value);
+	if(!vnc->font) {
+		return -EINVAL;
+	}
+
+	return 0;
 }
