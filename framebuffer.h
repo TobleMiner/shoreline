@@ -54,4 +54,10 @@ inline struct fb_size* fb_get_size(struct fb* fb) {
 	return &fb->size;
 }
 
+inline union fb_pixel* fb_get_pixel_ptr(struct fb* fb, unsigned int x, unsigned int y) {
+	return &(fb->pixels[y * fb->size.width + x]);
+}
+
+#define FB_SET_PIXEL_UNSAFE(pixel, value) ((pixel)->abgr = (value))
+
 #endif

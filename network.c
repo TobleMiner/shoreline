@@ -210,7 +210,7 @@ static void* net_connection_thread(void* args) {
 	unsigned numa_node = get_numa_node();
 	struct fb* fb;
 	struct fb_size* fbsize;
-	union fb_pixel pixel;
+	union fb_pixel pixel, *pixel_target;
 	unsigned int x, y;
 
 	off_t offset;
@@ -302,6 +302,10 @@ recv:
 					goto recv_more;
 				}
 				y = net_str_to_uint32_10(ring, offset);
+				if(x < fbsize->width && y < fbsize->height) {
+					pixel_target = fb_get_pixel_ptr(fb, x, y);
+					__builtin_prefetch(pixel_target, true, 0);
+				}
 				if((err = net_skip_whitespace(ring)) < 0) {
 //					fprintf(stderr, "No whitespace after Y coordinate\n");
 					goto recv_more;
@@ -316,9 +320,9 @@ recv:
 					pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
 					pixel.color.alpha = 0xFF;
 				}
-//				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
+//			printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 				if(x < fbsize->width && y < fbsize->height) {
-					fb_set_pixel(fb, x, y, &pixel);
+					FB_SET_PIXEL_UNSAFE(pixel_target, pixel.abgr);
 				} else {
 //					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 				}
