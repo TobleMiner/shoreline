@@ -1,7 +1,11 @@
 #include "workqueue.h"
 
 #include <errno.h>
+
+#ifdef SHORELINE_NUMA
 #include <numa.h>
+#endif
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -15,9 +19,11 @@ static void* work_thread(void* priv) {
 	int err;
 	struct workqueue* wqueue = (struct workqueue*)priv;
 	// If there is more than one workqueue we need to take care of allocation policies
+#ifdef SHORELINE_NUMA
 	if(num_workqueues > 1) {
 		numa_set_preferred(wqueue->numa_node);
 	}
+#endif
 	pthread_mutex_lock(&wqueue->lock);
 	while(!wqueue->do_exit) {
 		pthread_cond_wait(&wqueue->cond, &wqueue->lock);
@@ -72,9 +78,11 @@ int workqueue_init() {
 	int err = 0, i;
 
 	num_workqueues = 1;
+#ifdef SHORELINE_NUMA
 	if(numa_available()) {
 		num_workqueues = numa_max_node();
 	}
+#endif
 
 	workqueues = calloc(num_workqueues, sizeof(struct workqueue));
 	if(!workqueues) {

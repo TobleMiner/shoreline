@@ -9,8 +9,12 @@ extern struct frontend_def front_sdl;
 extern struct frontend_def front_vnc;
 
 struct frontend_id frontends[] = {
+#ifdef SHORELINE_SDL
 	{ "sdl", &front_sdl },
+#endif
+#ifdef SHORELINE_VNC
 	{ "vnc", &front_vnc },
+#endif
 	{ NULL, NULL }
 };
 

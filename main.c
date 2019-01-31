@@ -15,7 +15,11 @@
 
 #include "framebuffer.h"
 #include "sdl.h"
+
+#ifdef SHORELINE_VNC
 #include "vnc.h"
+#endif
+
 #include "network.h"
 #include "llist.h"
 #include "util.h"
