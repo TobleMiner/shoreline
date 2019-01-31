@@ -40,7 +40,7 @@ FEATURE_VNC = no, install libvncserver for VNC server support
 CONFIG_VNC ?= $(shell pkg-config --exists libvncserver && echo 1)
 ifeq ($(CONFIG_VNC),1)
 	FEATURE_VNC = yes
-	FEATURES += sdl
+	FEATURES += vnc
 	DEPFLAGS_CC += -DSHORELINE_VNC $(shell pkg-config --cflags libvncserver)
 	DEPFLAGS_LD += $(shell pkg-config --libs libvncserver)
 	OBJS += vnc.o
