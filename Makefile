@@ -2,7 +2,7 @@ CC ?= gcc
 OBJCOPY ?= objcopy
 RM = rm -f
 
-CCFLAGS = -Wall -D_GNU_SOURCE
+CCFLAGS += -Wall -D_GNU_SOURCE
 ifeq ($(DEBUG),1)
 	CCFLAGS += -O1 -ggdb
 else
