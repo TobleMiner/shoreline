@@ -306,7 +306,7 @@ int main(int argc, char** argv) {
 			if(show_repo_url && frontend_can_draw_string(front)) {
 				frontend_draw_string(front, 0, 0, "https://github.com/TobleMiner/shoreline");
 			}
-			if(frontend_update(front)) {
+			if((err = frontend_update(front))) {
 				doshutdown(SIGINT);
 				break;
 			}
