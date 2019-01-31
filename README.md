@@ -35,7 +35,7 @@ There are a few more commandline switches:
 
 ## Frontend options
 
-When specifying a frontend frontend-specific options may be passed to the frontend. For example then VNC frontend can be configured
+When specifying a frontend frontend-specific options may be passed to the frontend. For example the VNC frontend can be configured
 to use a nonstandard port:
 
 `shoreline -f vnc,port=2342`
