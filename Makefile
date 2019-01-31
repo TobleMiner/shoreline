@@ -54,16 +54,16 @@ ifneq ($(OLDFEATURES),$(FEATURES))
 	PREPARE += clean
 endif
 
-all: $(PREPARE) features shoreline
+all: $(PREPARE) shoreline
 
 %.o : %.c
 	$(CC) -c $(CCFLAGS) $(DEPFLAGS_CC) $< -o $@
 
-shoreline: $(OBJS)
-	$(CC) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
+shoreline: features $(OBJS)
+	$(CC) $(CCFLAGS) $(OBJS) $(DEPFLAGS_LD) -o shoreline
 	$(OBJCOPY) --update-section .features=features shoreline
 
-features:
+features: $(PREPARE)
 	$(info NUMA support = $(FEATURE_NUMA))
 	$(info SDL support = $(FEATURE_SDL))
 	$(info VNC server support = $(FEATURE_VNC))
