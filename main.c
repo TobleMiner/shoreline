@@ -308,6 +308,7 @@ int main(int argc, char** argv) {
 				frontend_draw_string(front, 0, 0, "https://github.com/TobleMiner/shoreline");
 			}
 			if((err = frontend_update(front))) {
+				fprintf(stderr, "Failed to update frontend '%s', %d => %s, bailing out\n", front->def->name, err, strerror(-err));
 				doshutdown(SIGINT);
 				break;
 			}
