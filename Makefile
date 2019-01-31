@@ -70,7 +70,7 @@ features:
 	$(info SDL support = $(FEATURE_SDL))
 	$(info VNC server support = $(FEATURE_VNC))
 	$(info Enabled features: $(FEATURES))
-	echo $(FEATURES) > features
+	echo -en $(FEATURES)\\0 > features
 
 clean:
 	$(RM) $(OBJS)
