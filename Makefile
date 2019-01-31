@@ -47,7 +47,7 @@ ifeq ($(CONFIG_VNC),1)
 endif
 
 ifeq ($(shell [ -f shoreline ]; echo $$?),0)
-	OLDFEATURES = $(shell $(OBJCOPY) --dump-section features=features shoreline 2> /dev/null && cat features)
+	OLDFEATURES = $(shell $(OBJCOPY) --dump-section .features=features shoreline 2> /dev/null && cat features)
 else
 	OLDFEATURES = $(FEATURES)
 endif
@@ -63,7 +63,7 @@ all: $(PREPARE) features shoreline
 
 shoreline: $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
-	$(OBJCOPY) --update-section features=features shoreline
+	$(OBJCOPY) --update-section .features=features shoreline
 
 features:
 	$(info NUMA support = $(FEATURE_NUMA))
