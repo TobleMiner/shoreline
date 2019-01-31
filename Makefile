@@ -47,9 +47,7 @@ ifeq ($(CONFIG_VNC),1)
 endif
 
 ifeq ($(shell [ -f shoreline ]; echo $$?),0)
-	OLDFEATURES = $(shell $(OBJCOPY) --dump-section .features=features shoreline 2> /dev/null && cat features)
-else
-	OLDFEATURES = $(FEATURES)
+	OLDFEATURES = $(shell $(OBJCOPY) --dump-section .features=features shoreline &> /dev/null && cat features)
 endif
 
 ifneq ($(OLDFEATURES),$(FEATURES))
