@@ -76,3 +76,5 @@ clean:
 	$(RM) $(OBJS)
 	$(RM) shoreline
 	$(RM) features
+
+.PHONY: clean all
