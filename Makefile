@@ -1,11 +1,13 @@
 CC ?= gcc
+RM = rm -f
+
 CCFLAGS = -Wall -D_GNU_SOURCE
 ifeq ($(DEBUG),1)
-CCFLAGS += -O1 -ggdb
+	CCFLAGS += -O1 -ggdb
 else
-CCFLAGS += -Ofast -march=native
+	CCFLAGS += -Ofast -march=native
 endif
-RM = rm -f
+
 DEPS = sdl2 libvncserver
 DEPFLAGS_CC = `pkg-config --cflags $(DEPS)`
 DEPFLAGS_LD = `pkg-config --libs $(DEPS)` -lpthread -lnuma
@@ -22,3 +24,5 @@ shoreline: $(OBJS)
 clean:
 	$(RM) $(OBJS)
 	$(RM) shoreline
+
+.PHONY: all clean
