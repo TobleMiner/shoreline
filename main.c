@@ -37,6 +37,8 @@
 
 #define MAX_FRONTENDS 16
 
+char _features[1024] __attribute__((section("features"))) = { 0 };
+
 static bool do_exit = false;
 
 extern struct frontend_id frontends[];
@@ -67,6 +69,7 @@ void doshutdown(int sig)
 
 void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-d]\n", binary);
+	fprintf(stderr, "Enabled features: %s\n", _features);
 }
 
 struct resize_wq_priv {

@@ -63,7 +63,7 @@ all: $(PREPARE) features shoreline
 
 shoreline: $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
-	$(OBJCOPY) --add-section features=features shoreline
+	$(OBJCOPY) --update-section features=features shoreline
 
 features:
 	$(info NUMA support = $(FEATURE_NUMA))
