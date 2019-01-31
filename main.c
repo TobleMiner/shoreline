@@ -268,7 +268,7 @@ int main(int argc, char** argv) {
 	}
 
 	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
-		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
+		fprintf(stderr, "Failed to initialize network: %d => %s\n", err, strerror(-err));
 		goto fail_fronts;
 	}
 	if(handle_signals) {
