@@ -33,6 +33,15 @@ There are a few more commandline switches:
 -d					Disable	display of repo url (https://github.com/TobleMiner/shoreline) in upper left corner
 ```
 
+## Frontend options
+
+When specifying a frontend frontend-specific options may be passed to the frontend. For example then VNC frontend can be configured
+to use a nonstandard port:
+
+`shoreline -f vnc,port=2342`
+
+All available frontends and their options can be listed using `shoreline -f ?`.
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
