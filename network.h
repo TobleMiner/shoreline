@@ -73,8 +73,6 @@ inline ssize_t net_write(int socket, char* data, size_t len) {
 	return 0;
 }
 
-#define net_abgr_to_rgb(abgr) ((abgr >> 8) & 0xFFFFFF)
-
 int net_alloc(struct net** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size);
 void net_free(struct net* net);
 

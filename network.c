@@ -312,8 +312,8 @@ recv:
 				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
 					// Get pixel
 					if(x < fbsize->width && y < fbsize->height) {
-						scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "PX %06x\n",
-							net_abgr_to_rgb(fb_get_pixel(net->fb, x, y).abgr));
+						scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
+							x, y, fb_get_pixel(net->fb, x, y).abgr);
 						if((err = net_write(socket, scratch_str, scratch_str_len))) {
 							fprintf(stderr, "Failed to write to socket: %d => %s\n", err, strerror(-err));
 							goto fail_ring;
