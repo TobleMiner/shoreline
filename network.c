@@ -112,7 +112,7 @@ static int net_is_whitespace(char c) {
 }
 
 static int net_skip_whitespace(struct ring* ring) {
-	int err, cnt = 0;
+	int cnt = 0;
 	char c;
 	while(ring_any_available(ring)) {
 		c = ring_peek_one(ring);
@@ -122,10 +122,8 @@ static int net_skip_whitespace(struct ring* ring) {
 		ring_inc_read(ring);
 		cnt++;
 	}
-	err = -1;
-	return err;
 done:
-	return cnt;
+	return cnt ? cnt : -1;
 }
 
 static off_t net_next_whitespace(struct ring* ring) {
