@@ -267,7 +267,7 @@ int main(int argc, char** argv) {
 		free(frontid);
 	}
 
-	if((err = net_alloc(&net, &fb_list, &fb->size, ringbuffer_size))) {
+	if((err = net_alloc(&net, fb, &fb_list, &fb->size, ringbuffer_size))) {
 		fprintf(stderr, "Failed to initialize network: %d => %s\n", err, strerror(-err));
 		goto fail_fronts;
 	}
