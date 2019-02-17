@@ -23,7 +23,7 @@
 
 #define CONNECTION_QUEUE_SIZE 16
 #define THREAD_NAME_MAX 16
-#define SIZE_INFO_MAX 32
+#define SCRATCH_STR_MAX 32
 #define WHITESPACE_SEARCH_GARBAGE_THRESHOLD 32
 
 /* Theory Of Operation
@@ -51,7 +51,7 @@
  */
 static int one = 1;
 
-int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size) {
+int net_alloc(struct net** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size) {
 	int err = 0;
 	struct net* net = calloc(1, sizeof(struct net));
 	if(!net) {
@@ -60,6 +60,7 @@ int net_alloc(struct net** network, struct llist* fb_list, struct fb_size* fb_si
 	}
 
 	net->state = NET_STATE_IDLE;
+	net->fb = fb;
 	net->fb_list = fb_list;
 	net->fb_size = fb_size;
 	pthread_mutex_init(&net->fb_lock, NULL);
@@ -100,7 +101,11 @@ void net_shutdown(struct net* net) {
 	net->state = NET_STATE_EXIT;
 }
 
-static int net_is_whitespace(char c) {
+static inline int net_is_newline(char c) {
+	return c == '\r' || c == '\n';
+}
+
+static inline int net_is_whitespace(char c) {
 	switch(c) {
 		case ' ':
 		case '\n':
@@ -212,7 +217,7 @@ static void* net_connection_thread(void* args) {
 	unsigned int x, y;
 
 	off_t offset;
-	ssize_t read_len, write_len, write_cnt;
+	ssize_t read_len;
 	char* last_cmd;
 
 	/*
@@ -223,8 +228,8 @@ static void* net_connection_thread(void* args) {
 	*/
 	struct ring* ring;
 
-	char size_info[SIZE_INFO_MAX];
-	int size_info_len;
+	char scratch_str[SCRATCH_STR_MAX];
+	int scratch_str_len;
 
 	cpu_set_t nodemask;
 	int cpuid = sched_getcpu();
@@ -304,36 +309,45 @@ recv:
 //					fprintf(stderr, "No whitespace after Y coordinate\n");
 					goto recv_more;
 				}
-				if((offset = net_next_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No more whitespace found, missing color\n");
-					goto recv_more;
-				}
-				if(offset > 6) {
-					pixel.abgr = net_str_to_uint32_16(ring, offset);
+				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
+					// Get pixel
+					if(x < fbsize->width && y < fbsize->height) {
+						scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
+							x, y, fb_get_pixel(net->fb, x, y).abgr);
+						if((err = net_write(socket, scratch_str, scratch_str_len))) {
+							fprintf(stderr, "Failed to write to socket: %d => %s\n", err, strerror(-err));
+							goto fail_ring;
+						}
+					}
 				} else {
-					pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
-					pixel.color.alpha = 0xFF;
-				}
-//				printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
-				if(x < fbsize->width && y < fbsize->height) {
-					fb_set_pixel(fb, x, y, &pixel);
-				} else {
-//					printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
+					// Set pixel
+					if((offset = net_next_whitespace(ring)) < 0) {
+//						fprintf(stderr, "No more whitespace found, missing color\n");
+						goto recv_more;
+					}
+					if(offset > 6) {
+						pixel.abgr = net_str_to_uint32_16(ring, offset);
+					} else {
+						pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
+						pixel.color.alpha = 0xFF;
+					}
+//					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
+					if(x < fbsize->width && y < fbsize->height) {
+						fb_set_pixel(fb, x, y, &pixel);
+					} else {
+//						printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
+					}
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
-				size_info_len = snprintf(size_info, SIZE_INFO_MAX, "SIZE %u %u\n", fbsize->width, fbsize->height);
-				if(size_info_len >= SIZE_INFO_MAX) {
+				scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "SIZE %u %u\n", fbsize->width, fbsize->height);
+				if(scratch_str_len >= SCRATCH_STR_MAX) {
 					fprintf(stderr, "SIZE output too long\n");
 					goto fail_ring;
 				}
-				write_cnt = 0;
-				while(write_cnt < size_info_len) {
-					if((write_len = write(socket, size_info + write_cnt, size_info_len - write_cnt)) < 0) {
-						fprintf(stderr, "Failed to write to socket: %d => %s\n", errno, strerror(errno));
-						err = -errno;
-						goto fail_ring;
-					}
-					write_cnt += write_len;
+
+				if((err = net_write(socket, scratch_str, scratch_str_len))) {
+					fprintf(stderr, "Failed to write to socket: %d => %s\n", err, strerror(-err));
+					goto fail_ring;
 				}
 			} else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
