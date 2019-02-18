@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <netdb.h>
 #include <sched.h>
+#include <stdarg.h>
 
 #include "network.h"
 #include "ring.h"
@@ -186,6 +187,38 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 	return val;
 }
 
+static ssize_t net_sock_printf(int socket, char* scratch_str, size_t scratch_len, char* fmt, ...) {
+	ssize_t ret;
+	size_t len;
+	off_t write_cnt = 0;
+
+	va_list vargs;
+	va_start(vargs, fmt);
+	ret = vsnprintf(scratch_str, scratch_len, fmt, vargs);
+	va_end(vargs);
+
+	if(ret >= scratch_len) {
+		ret = -ENOBUFS;
+	}
+
+	if(ret < 0) {
+		goto out;
+	}
+
+	len = ret;
+
+	while(write_cnt < len) {
+		ssize_t write_len;
+		if((write_len = write(socket, scratch_str + write_cnt, len - write_cnt)) < 0) {
+			ret = -errno;
+			goto out;
+		}
+		write_cnt += write_len;
+	}
+out:
+	return ret;
+}
+
 static void net_connection_thread_cleanup_ring(void* args) {
 	struct net_connection_thread* thread = args;
 	ring_free(thread->ring);
@@ -229,7 +262,6 @@ static void* net_connection_thread(void* args) {
 	struct ring* ring;
 
 	char scratch_str[SCRATCH_STR_MAX];
-	int scratch_str_len;
 
 	cpu_set_t nodemask;
 	int cpuid = sched_getcpu();
@@ -312,10 +344,9 @@ recv:
 				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
 					// Get pixel
 					if(x < fbsize->width && y < fbsize->height) {
-						scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
-							x, y, fb_get_pixel(net->fb, x, y).abgr);
-						if((err = net_write(socket, scratch_str, scratch_str_len))) {
-							fprintf(stderr, "Failed to write to socket: %d => %s\n", err, strerror(-err));
+						if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
+							x, y, fb_get_pixel(net->fb, x, y).abgr)) < 0) {
+							fprintf(stderr, "Failed to write out pixel value: %d => %s\n", err, strerror(-err));
 							goto fail_ring;
 						}
 					}
@@ -339,14 +370,8 @@ recv:
 					}
 				}
 			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
-				scratch_str_len = snprintf(scratch_str, sizeof(scratch_str), "SIZE %u %u\n", fbsize->width, fbsize->height);
-				if(scratch_str_len >= SCRATCH_STR_MAX) {
-					fprintf(stderr, "SIZE output too long\n");
-					goto fail_ring;
-				}
-
-				if((err = net_write(socket, scratch_str, scratch_str_len))) {
-					fprintf(stderr, "Failed to write to socket: %d => %s\n", err, strerror(-err));
+				if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "SIZE %u %u\n", fbsize->width, fbsize->height)) < 0) {
+					fprintf(stderr, "Failed to write out size: %d => %s\n", err, strerror(-err));
 					goto fail_ring;
 				}
 			} else {

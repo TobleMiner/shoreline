@@ -60,19 +60,6 @@ struct net_connection_thread {
 #define likely(x)	__builtin_expect((x),1)
 #define unlikely(x)	__builtin_expect((x),0)
 
-inline ssize_t net_write(int socket, char* data, size_t len) {
-	off_t write_cnt = 0;
-	ssize_t write_len;
-
-	while(write_cnt < len) {
-		if((write_len = write(socket, data + write_cnt, len - write_cnt)) < 0) {
-			return -errno;
-		}
-		write_cnt += write_len;
-	}
-	return 0;
-}
-
 int net_alloc(struct net** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size, size_t ring_size);
 void net_free(struct net* net);
 
