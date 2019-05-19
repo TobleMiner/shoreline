@@ -12,6 +12,8 @@ A very fast pixelflut server with full IPv6 support written in C
 * libvncserver
 * libnuma (numactl)
 
+On \*buntu/Debian distros use `sudo apt install git build-essential libsdl2-dev libpthread-stubs0-dev libvncserver-dev libnuma-dev` to install the dependencies.
+
 Use ```make``` to build shoreline
 
 
