@@ -33,6 +33,8 @@ struct fb {
 	union fb_pixel* pixels;
 	unsigned numa_node;
 	struct llist_entry list;
+	unsigned long long pixelCounter;
+	unsigned long long bytesCounter;
 };
 
 

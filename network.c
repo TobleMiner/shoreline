@@ -313,6 +313,7 @@ recv:
 			goto fail_ring;
 		}
 //		printf("Read %zd bytes\n", read_len);
+		fb->bytesCounter += read_len;
 		ring_advance_write(ring, read_len);
 
 		while(ring_any_available(ring)) {
@@ -376,7 +377,7 @@ recv:
 				}
 			} else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
-					printf("Encountered unknown command\n");
+					// printf("Encountered unknown command\n");
 					ring_advance_read(ring, offset);
 				} else {
 					if(offset == -EINVAL) {

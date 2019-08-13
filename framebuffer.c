@@ -28,6 +28,8 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 
 	fb->numa_node = get_numa_node();
 	fb->list = LLIST_ENTRY_INIT;
+	fb->pixelCounter = 0;
+	fb->bytesCounter = 0;
 
 	*framebuffer = fb;
 	return 0;
@@ -69,6 +71,7 @@ void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel*
 
 	target = &(fb->pixels[y * fb->size.width + x]);
 	memcpy(target, pixel, sizeof(*pixel));
+	fb->pixelCounter++;
 }
 
 void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red, uint8_t green, uint8_t blue) {
@@ -80,6 +83,7 @@ void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red
 	target->color.color_bgr.red = red;
 	target->color.color_bgr.green = green;
 	target->color.color_bgr.blue = blue;
+	fb->pixelCounter++;
 }
 
 // It might be a good idea to offer a variant returning a pointer to avoid unnecessary copies
@@ -127,6 +131,9 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 	struct fb* other;
 	size_t i, j, fb_size = fb->size.width * fb->size.height, num_fbs = llist_length(fbs);
 	unsigned int indices[num_fbs];
+	unsigned long long globalPixelCounter = 0;
+	unsigned long long globalBytesCounter = 0;
+
 	for(i = 0; i < num_fbs; i++) {
 		indices[i] = i;
 	}
@@ -146,6 +153,11 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 			// Reset to fully transparent
 			other->pixels[j].color.alpha = 0;
 		}
+		globalPixelCounter += other->pixelCounter;
+		globalBytesCounter += other->bytesCounter;
 	}
+
+	fb->pixelCounter = globalPixelCounter;
+	fb->bytesCounter = globalBytesCounter;
 	return 0;
 }
