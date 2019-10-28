@@ -6,6 +6,8 @@
 #include "framebuffer.h"
 #include "frontend.h"
 
+#define SDL_PXFMT SDL_PIXELFORMAT_RGBA8888
+
 struct sdl;
 
 typedef int (*sdl_cb_resize)(struct sdl* sdl, unsigned int width, unsigned int height);

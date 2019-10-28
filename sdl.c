@@ -11,8 +11,6 @@
 #include "frontend.h"
 #include "util.h"
 
-#define SL_PXFMT SDL_PIXELFORMAT_RGBA8888
-
 static const struct frontend_ops fops = {
 	.alloc = sdl_alloc,
 	.free = sdl_free,
@@ -67,7 +65,7 @@ int sdl_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	}
 	SDL_RenderClear(sdl->renderer);
 
-	sdl->texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT,
+	sdl->texture = SDL_CreateTexture(sdl->renderer, SDL_PXFMT,
 		SDL_TEXTUREACCESS_STREAMING, size->width, size->height);
 
 	if(!sdl->texture) {
@@ -128,7 +126,7 @@ int sdl_update(struct frontend* front) {
 					}
 				}
 
-				texture = SDL_CreateTexture(sdl->renderer, SL_PXFMT,
+				texture = SDL_CreateTexture(sdl->renderer, SDL_PXFMT,
 					SDL_TEXTUREACCESS_STREAMING, width, height);
 				if(!texture) {
 					fprintf(stderr, "Failed to allocate new texture\n");
