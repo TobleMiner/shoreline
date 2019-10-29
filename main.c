@@ -34,6 +34,8 @@
 
 #define MAX_FRONTENDS 16
 
+#define REPO_URL "https://github.com/TobleMiner/shoreline"
+
 static bool do_exit = false;
 
 extern struct frontend_id frontends[];
@@ -63,7 +65,8 @@ void doshutdown(int sig)
 }
 
 void show_usage(char* binary) {
-	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] [-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-d]\n", binary);
+	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] "\
+		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d]\n", binary);
 }
 
 struct resize_wq_priv {
@@ -130,7 +133,7 @@ int main(int argc, char** argv) {
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
 	bool show_repo_url = true;
-	struct textrender* txtrndr;
+	struct textrender* txtrndr = NULL;
 
 	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
@@ -145,7 +148,7 @@ int main(int argc, char** argv) {
 	struct timespec before, after;
 	long long time_delta;
 
-	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:d?")) != -1) {
+	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:t:d?")) != -1) {
 		switch(opt) {
 			case('p'):
 				port = optarg;
@@ -207,6 +210,12 @@ int main(int argc, char** argv) {
 				}
 				frontend_cnt++;
 				break;
+			case('t'):
+				if((err = textrender_alloc(&txtrndr, optarg))) {
+					fprintf(stderr, "Failed to allocate freetype text renderer\n");
+					goto fail;
+				}
+				break;
 			case('d'):
 				show_repo_url = false;
 				break;
@@ -229,11 +238,6 @@ int main(int argc, char** argv) {
 	if((err = fb_alloc(&fb, width, height))) {
 		fprintf(stderr, "Failed to allocate framebuffer: %d => %s\n", err, strerror(-err));
 		goto fail;
-	}
-
-	if((err = textrender_alloc(&txtrndr, "/usr/share/fonts/TTF/DejaVuSansMono.ttf"))) {
-		fprintf(stderr, "Failed to load font :(\n");
-		goto fail_fb;
 	}
 
 	llist_init(&fb_list);
@@ -308,12 +312,18 @@ int main(int argc, char** argv) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
-		textrender_draw_string(txtrndr, fb, 100, 100, "Hello World", 32);
 		llist_unlock(&fb_list);
+		if(txtrndr) {
+			if(show_repo_url) {
+				textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, REPO_URL, 16);
+			}
+		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
-			if(show_repo_url && frontend_can_draw_string(front)) {
-				frontend_draw_string(front, 0, 0, "https://github.com/TobleMiner/shoreline");
+			if(!txtrndr) {
+				if(show_repo_url && frontend_can_draw_string(front)) {
+					frontend_draw_string(front, 0, 0, REPO_URL);
+				}
 			}
 			if((err = frontend_update(front))) {
 				fprintf(stderr, "Failed to update frontend '%s', %d => %s, bailing out\n", front->def->name, err, strerror(-err));
@@ -341,11 +351,14 @@ fail_fronts:
 		printf("Shutting down frontend '%s'\n", front->def->name);
 		frontend_free(front);
 	}
-fail_fb:
+//fail_fb:
 	fb_free(fb);
 fail:
 	while(frontend_cnt > 0 && frontend_cnt--) {
 		free(frontend_names[frontend_cnt]);
+	}
+	if(txtrndr) {
+		textrender_free(txtrndr);
 	}
 	workqueue_deinit();
 	return err;
