@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
 	bool show_repo_url = true;
-  struct textrender* txtrndr;
+	struct textrender* txtrndr;
 
 	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
@@ -231,10 +231,10 @@ int main(int argc, char** argv) {
 		goto fail;
 	}
 
-  if((err = textrender_alloc(&txtrndr, "/usr/share/fonts/TTF/DejaVuSansMono.ttf"))) {
-    fprintf(stderr, "Failed to load font :(\n");
-    goto fail_fb;
-  }
+	if((err = textrender_alloc(&txtrndr, "/usr/share/fonts/TTF/DejaVuSansMono.ttf"))) {
+		fprintf(stderr, "Failed to load font :(\n");
+		goto fail_fb;
+	}
 
 	llist_init(&fb_list);
 	sdl_param.cb_private = &fb_list;
@@ -308,7 +308,7 @@ int main(int argc, char** argv) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
-    textrender_draw_string(txtrndr, fb, 100, 100, "Hello World", 32);
+		textrender_draw_string(txtrndr, fb, 100, 100, "Hello World", 32);
 		llist_unlock(&fb_list);
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
