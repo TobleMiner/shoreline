@@ -54,4 +54,8 @@ inline struct fb_size* fb_get_size(struct fb* fb) {
 	return &fb->size;
 }
 
+inline union fb_pixel* fb_get_line_base(struct fb* fb, unsigned int line) {
+  return &fb->pixels[fb->size.width * line];
+}
+
 #endif
