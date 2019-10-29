@@ -58,4 +58,7 @@ inline union fb_pixel* fb_get_line_base(struct fb* fb, unsigned int line) {
   return &fb->pixels[fb->size.width * line];
 }
 
+// Pixel fmt conversion
+#define FB_GRAY8_TO_PIXEL(c) ( 0x000000ff | (c) << 24 | (c) << 16 | (c) << 8 )
+
 #endif
