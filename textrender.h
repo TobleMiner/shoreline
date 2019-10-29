@@ -7,8 +7,8 @@
 #include FT_FREETYPE_H
 
 struct textrender {
-  FT_Library ftlib;
-  FT_Face ftface;
+	FT_Library ftlib;
+	FT_Face ftface;
 };
 
 // Management

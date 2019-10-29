@@ -39,10 +39,10 @@ inline char ring_peek_one(struct ring* ring) {
 
 // Peek previous byte
 inline char ring_peek_prev(struct ring* ring) {
-  if(ring->ptr_read - 1 < ring->data) {
-    return *(ring->data + ring->size - 1);
-  }
-  return *(ring->ptr_read - 1);
+	if(ring->ptr_read - 1 < ring->data) {
+		return *(ring->data + ring->size - 1);
+	}
+	return *(ring->ptr_read - 1);
 }
 
 // Pointer to next byte to read from ringbuffer
