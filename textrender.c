@@ -71,12 +71,17 @@ static int draw_bitmap(struct fb* fb, FT_Bitmap* ftbmp, unsigned int x, unsigned
 		return -EINVAL;
 	}
 
-	for(i = 0; i < height; i++) {
+	for(i = 0; i < ftbmp->rows; i++) {
 		union fb_pixel* line_base = fb_get_line_base(fb, y + i);
 		union fb_pixel* line_start = &line_base[x];
 		unsigned char* gray_base = &ftbmp->buffer[ftbmp->width * i];
-		for(j = 0; j < width; j++) {
-			line_start[j].abgr = FB_GRAY8_TO_PIXEL(gray_base[j]);
+		if((y + i) < fb->size.height) {
+			size_t j;
+			for(j = 0; j < ftbmp->width; j++) {
+				if((x +j) < fb->size.width) {
+					line_start[j].abgr = FB_GRAY8_TO_PIXEL(gray_base[j]);
+				}
+			}
 		}
 	}
 	return 0;
