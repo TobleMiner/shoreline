@@ -8,10 +8,10 @@ else
 	CCFLAGS += -Ofast -march=native
 endif
 
-DEPS = sdl2 libvncserver
+DEPS = sdl2 libvncserver freetype2
 DEPFLAGS_CC = `pkg-config --cflags $(DEPS)`
 DEPFLAGS_LD = `pkg-config --libs $(DEPS)` -lpthread -lnuma
-OBJS = ring.o llist.o framebuffer.o sdl.o vnc.o network.o main.o workqueue.o frontend.o
+OBJS = ring.o llist.o framebuffer.o sdl.o vnc.o network.o main.o workqueue.o frontend.o textrender.o
 
 all: shoreline
 
