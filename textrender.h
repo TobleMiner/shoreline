@@ -3,19 +3,19 @@
 
 #include <sys/types.h>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_ttf.h>
-
-struct textrender_font {
-  TTF_Font* font;
-  unsigned int size;
-};
+#include <ft2build.h>
+#include FT_FREETYPE_H
 
 struct textrender {
-  char* fontname;
-  struct textrender_font* font_cache;
-  size_t font_cache_size;
-  size_t num_cached_fonts;
+  FT_Library ftlib;
+  FT_Face ftface;
 };
+
+// Management
+int textrender_alloc(struct textrender** ret, char* fontfile);
+void textrender_free(struct textrender* txtrndr);
+
+// Drawing
+int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned int x, unsigned int y, const char* text, unsigned int size);
 
 #endif

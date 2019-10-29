@@ -1,76 +1,26 @@
 #include <errno.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "framebuffer.h"
 #include "textrender.h"
+#include "util.h"
 
 #define DEFAULT_FONT_SIZE 16
 #define CACHE_CHUNK_SIZE 8
 
-static int cache_add_entry(struct textrender* txtrndr, TTF_Font* font, unsigned int size) {
-  // Cache is full, extend
-  if(txtrndr->num_cached_fonts >= txtrndr->font_cache_size) {
-    size_t new_size = txtrndr->font_cache_size + CACHE_CHUNK_SIZE;
-    struct textrender_font* new_buf = realloc(txtrndr->font_cache, new_size * sizeof(struct textrender_font));
-    if(!new_buf) {
-      return -ENOMEM;
-    }
-    txtrndr->font_cache_size = new_size;
-  }
-  struct textrender_font* cache_entry = txtrndr->font_cache[txtrndr->num_cached_fonts];
-  cache_entry->font = font;
-  cache_entry->size = size;
-  txtrndr->num_cached_fonts++;
-  return 0;
-}
+#define TEXT_BORDER 3
 
-static int textrender_get_font(TTF_Font** ret, struct textrender* txtrndr, unsigned int size) {
-  int err;
-  size_t i;
-  TTF_Font* font;
+#define DPI 100
 
-  // Perform lookup in cache
-  for(i = 0; i < txtrndr->num_cached_fonts; i++) {
-    if(txtrndr->font_cache[i].size == size) {
-      *ret = txtrndr->font_cache[i].font;
-      return 0;
-    }
-  }
+#define PIXEL_TO_CARTESIAN(x) (64 * (x))
+#define CARTESIAN_TO_PIXELS(x) ((x) / 64)
 
-  // Fontsize not found, load it
-  font = TTF_OpenFont(txtrndr->fontname, size);
-  if(!font) {
-    fprintf(stderr, "Failed to load font \"%s\", size %upt: %s\n", txtrndr->fontname, size, TTF_GetError());
-    err = -1;
-    goto fail;
-  }
-
-  // Store it in cache
-  err = cache_add_entry(txtrndr, font, size);
-  if(err) {
-    fprintf(stderr, "Failed to store font \"%s\", size %upt: %s\n in cache, %s(%d)", txtrndr->fontname, size, strerror(-err), err);
-    goto fail_font_alloc;
-  }
-
-fail_font_alloc:
-  TTF_CloseFont(font);
-fail:
-  return err;
-}
-
-int textrender_alloc(struct textrender** ret, char* ttffont) {
+int textrender_alloc(struct textrender** ret, char* fontfile) {
   int err = 0;
+  FT_Error fterr;
   struct textrender* txtrndr;
-  TTF_Font* font;
-
-  if(!TTF_WasInit()) {
-    err = TTF_Init();
-    if(err != 0) {
-      fprintf(stderr, "Failed to initialize SDL TTF renderer: %s\n", TTF_GetError());
-      goto fail;
-    }
-  }
 
   txtrndr = calloc(1, sizeof(struct textrender));
   if(!txtrndr) {
@@ -78,23 +28,25 @@ int textrender_alloc(struct textrender** ret, char* ttffont) {
     goto fail;
   }
 
-  txtrndr->fontname = strdup(ttffont);
-  if(!txtrndr->fontname) {
-    err = -ENOMEM;
+  fterr = FT_Init_FreeType(&txtrndr->ftlib);
+  if(fterr) {
+    err = fterr;
+    fprintf(stderr, "Failed to initialize free type library: %s(%d)", FT_Error_String(fterr), err);
     goto fail_alloc;
   }
 
-  err = textrender_get_font(&font, txtrndr, DEFAULT_FONT_SIZE);
-  if(err) {
-    fprintf(stderr, "Failed to load font %s at default size %u\n", ttffont, DEFAULT_FONT_SIZE);
-    goto fail_namedup;
+  fterr = FT_New_Face(txtrndr->ftlib, fontfile, 0, &txtrndr->ftface);
+  if(fterr) {
+    err = fterr;
+    fprintf(stderr, "Failed to load font face \"%s\": %s(%d)", fontfile, FT_Error_String(fterr), err);
+    goto fail_ft;
   }
 
   *ret = txtrndr;
   return 0;
 
-  fail_namedup:
-    free(txtrndr);
+  fail_ft:
+    FT_Done_FreeType(txtrndr->ftlib);
   fail_alloc:
     free(txtrndr);
   fail:
@@ -102,14 +54,64 @@ int textrender_alloc(struct textrender** ret, char* ttffont) {
 }
 
 void textrender_free(struct textrender* txtrndr) {
-  while(txtrndr->num_cached_fonts--) {
-    TTF_CloseFont(txtrndr->font_cache[i].font);
-  }
-  free(txtrndr->fontname);
-  free(txtrndr->font_cache);
+  FT_Done_Face(txtrndr->ftface);
+  FT_Done_FreeType(txtrndr->ftlib);
   free(txtrndr);
 }
 
-int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned int x, unsigned int y, char* string, usinged int size) {
+static int draw_bitmap(struct fb* fb, FT_Bitmap* ftbmp, unsigned int x, unsigned int y, unsigned int width, unsigned int height) {
+  size_t i, j;
 
+  y -= height;
+
+  width = ftbmp->width;
+  height = ftbmp->rows;
+
+  if(ftbmp->pixel_mode != FT_PIXEL_MODE_GRAY) {
+    return -EINVAL;
+  }
+
+  for(i = 0; i < height; i++) {
+    union fb_pixel* line_base = fb_get_line_base(fb, y + i);
+    union fb_pixel* line_start = &line_base[x];
+    unsigned char* gray_base = &ftbmp->buffer[ftbmp->width * i];
+    for(j = 0; j < width; j++) {
+      line_start[j].abgr = FB_GRAY8_TO_PIXEL(gray_base[j]);
+    }
+  }
+  return 0;
+}
+
+int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned int x, unsigned int y, const char* text, unsigned int size) {
+  int err = 0, i;
+  FT_Error fterr;
+  FT_GlyphSlot ftslot;
+  FT_Vector ftpen;
+
+  fterr = FT_Set_Char_Size(txtrndr->ftface, PIXEL_TO_CARTESIAN(size), 0, DPI, DPI);
+  if(fterr) {
+    err = fterr;
+    fprintf(stderr, "Failed to set font size to %u: %s(%d)", size, FT_Error_String(fterr), err);
+    goto fail;
+  }
+
+  ftslot = txtrndr->ftface->glyph;
+
+  ftpen.x = ftpen.y = 0;
+
+  for(i = 0; i < strlen(text); i++) {
+    fterr = FT_Load_Char(txtrndr->ftface, text[i], FT_LOAD_RENDER);
+    if(fterr) {
+      err = fterr;
+      fprintf(stderr, "Warning: Failed to find glyph for char '%c': %s(%d)", text[i], FT_Error_String(fterr), err);
+      continue;
+    }
+
+    draw_bitmap(fb, &ftslot->bitmap, x + CARTESIAN_TO_PIXELS(ftpen.x), y + CARTESIAN_TO_PIXELS(ftpen.y), ftslot->bitmap_left, ftslot->bitmap_top);
+
+    ftpen.x += ftslot->advance.x;
+    ftpen.y += ftslot->advance.y;
+  }
+fail:
+  return err;
 }
