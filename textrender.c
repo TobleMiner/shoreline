@@ -31,14 +31,14 @@ int textrender_alloc(struct textrender** ret, char* fontfile) {
 	fterr = FT_Init_FreeType(&txtrndr->ftlib);
 	if(fterr) {
 		err = fterr;
-		fprintf(stderr, "Failed to initialize free type library: %s(%d)", FT_Error_String(fterr), err);
+		fprintf(stderr, "Failed to initialize free type library: %s(%d)\n", FT_Error_String(fterr), err);
 		goto fail_alloc;
 	}
 
 	fterr = FT_New_Face(txtrndr->ftlib, fontfile, 0, &txtrndr->ftface);
 	if(fterr) {
 		err = fterr;
-		fprintf(stderr, "Failed to load font face \"%s\": %s(%d)", fontfile, FT_Error_String(fterr), err);
+		fprintf(stderr, "Failed to load font face \"%s\": %s(%d)\n", fontfile, FT_Error_String(fterr), err);
 		goto fail_ft;
 	}
 
@@ -91,7 +91,7 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 	fterr = FT_Set_Char_Size(txtrndr->ftface, PIXEL_TO_CARTESIAN(size), 0, DPI, DPI);
 	if(fterr) {
 		err = fterr;
-		fprintf(stderr, "Failed to set font size to %u: %s(%d)", size, FT_Error_String(fterr), err);
+		fprintf(stderr, "Failed to set font size to %u: %s(%d)\n", size, FT_Error_String(fterr), err);
 		goto fail;
 	}
 
@@ -103,7 +103,7 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 		fterr = FT_Load_Char(txtrndr->ftface, text[i], FT_LOAD_RENDER);
 		if(fterr) {
 			err = fterr;
-			fprintf(stderr, "Warning: Failed to find glyph for char '%c': %s(%d)", text[i], FT_Error_String(fterr), err);
+			fprintf(stderr, "Warning: Failed to find glyph for char '%c': %s(%d)\n", text[i], FT_Error_String(fterr), err);
 			continue;
 		}
 
