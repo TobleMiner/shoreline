@@ -59,13 +59,10 @@ void textrender_free(struct textrender* txtrndr) {
 	free(txtrndr);
 }
 
-static int draw_bitmap(struct fb* fb, FT_Bitmap* ftbmp, unsigned int x, unsigned int y, unsigned int width, unsigned int height) {
-	size_t i, j;
+static int draw_bitmap(struct fb* fb, FT_Bitmap* ftbmp, unsigned int x, unsigned int y, unsigned int base) {
+	size_t i;
 
-	y -= height;
-
-	width = ftbmp->width;
-	height = ftbmp->rows;
+	y -= base;
 
 	if(ftbmp->pixel_mode != FT_PIXEL_MODE_GRAY) {
 		return -EINVAL;
@@ -112,7 +109,7 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 			continue;
 		}
 
-		draw_bitmap(fb, &ftslot->bitmap, x + CARTESIAN_TO_PIXELS(ftpen.x), y + CARTESIAN_TO_PIXELS(ftpen.y), ftslot->bitmap_left, ftslot->bitmap_top);
+		draw_bitmap(fb, &ftslot->bitmap, x + CARTESIAN_TO_PIXELS(ftpen.x), y + CARTESIAN_TO_PIXELS(ftpen.y), ftslot->bitmap_top);
 
 		ftpen.x += ftslot->advance.x;
 		ftpen.y += ftslot->advance.y;
