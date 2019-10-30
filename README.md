@@ -36,6 +36,7 @@ Options:
   -f <frontend,[option=value,...]> Frontend to use as a display. May be specified multiple times. Use -f ? to list available frontends and options
   -t <fontfile>                    Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>
   -d <description>                 Set description text to be displayed in upper left corner (default https://github.com/TobleMiner/shoreline)
+  -?                               Show this help
 ```
 
 ## Frontend options

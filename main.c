@@ -68,7 +68,7 @@ void doshutdown(int sig)
 
 void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] "\
-		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d <description>]\n", binary);
+		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d <description>] [-?]\n", binary);
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -p <port>                        Port to listen on (default %s)\n", PORT_DEFAULT);
 	fprintf(stderr, "  -b <address>                     Address to listen on (default %s)\n", LISTEN_DEFAULT);
@@ -81,6 +81,7 @@ void show_usage(char* binary) {
 		"Use -f ? to list available frontends and options\n");
 	fprintf(stderr, "  -t <fontfile>                    Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>\n");
 	fprintf(stderr, "  -d <description>                 Set description text to be displayed in upper left corner (default %s)\n", REPO_URL);
+	fprintf(stderr, "  -?                               Show this help\n");
 }
 
 struct resize_wq_priv {
