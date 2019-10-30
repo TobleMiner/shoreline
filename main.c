@@ -67,6 +67,18 @@ void doshutdown(int sig)
 void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] "\
 		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d]\n", binary);
+	fprintf(stderr, "Options:\n");
+	fprintf(stderr, "  -p <port>                        Port to listen on (default %s)\n", PORT_DEFAULT);
+	fprintf(stderr, "  -b <address>                     Address to listen on (default %s)\n", LISTEN_DEFAULT);
+	fprintf(stderr, "  -w <width>                       Width of drawing surface (default %u)\n", WIDTH_DEFAULT);
+	fprintf(stderr, "  -h <height>                      Height of drawing surface (default %u)\n", HEIGHT_DEFAULT);
+	fprintf(stderr, "  -r <update rate>                 Screen update rate in HZ (default %u)\n", RATE_DEFAULT);
+	fprintf(stderr, "  -s <ring size>                   Size of network ring buffer in bytes (default %u)\n", RINGBUFFER_DEFAULT);
+	fprintf(stderr, "  -l <listen threads>              Number of threads used to listen for incoming connections (default %u)\n", LISTEN_THREADS_DEFAULT);
+	fprintf(stderr, "  -f <frontend,[option=value,...]> Frontend to use as a display. May be specified multiple times. "\
+		"Use -f ? to list available frontends and options\n");
+	fprintf(stderr, "  -t <fontfile>                    Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>\n");
+	fprintf(stderr, "  -d                               Disable display of repo url (https://github.com/TobleMiner/shoreline) in upper left corner\n");
 }
 
 struct resize_wq_priv {
