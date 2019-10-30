@@ -6,6 +6,11 @@
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
+// FT_Error_String is not supported by older libfreetype2 versions
+#ifndef FT_Error_String
+#define FT_Error_String(_) ("FT_Error_String not supported")
+#endif
+
 struct textrender {
 	FT_Library ftlib;
 	FT_Face ftface;
