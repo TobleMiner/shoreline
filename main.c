@@ -47,9 +47,9 @@ void show_frontends() {
 		const struct frontend_arg* options = front->def->args;
 		fprintf(stderr, "\t%s: %s ", front->id, front->def->name);
 		if(options) {
-			fprintf(stderr, "(Options: ");
+			fprintf(stderr, "(Options:");
 			while(strlen(options->name)) {
-				fprintf(stderr, "%s ", options->name);
+				fprintf(stderr, " %s", options->name);
 				options++;
 			}
 			fprintf(stderr, ")");
