@@ -25,16 +25,17 @@ By default Shoreline runs in headless mode. In headless mode all user frontends 
 There are a few more commandline switches:
 
 ```
--p <port>				Port to listen on (default 1234)
--b <address>				Address to listen on (default ::)
--w <width>				Width of drawing surface (default 1024)
--h <height>				Height of drawing surface (default 768)
--r <update rate>			Screen update rate in HZ (default 60)
--s <ring size>				Size of network ring buffer in bytes (default 65536)
--l <listen threads>			Number of threads used to listen for incoming connections (default 10)
--f <frontend,[option=value,...]>	Frontend to use as a display. May be specified multiple times. Use -f ? to list available frontends and options
--t <fontfile>				Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>
--d					Disable	display of repo url (https://github.com/TobleMiner/shoreline) in upper left corner
+Options:
+  -p <port>                        Port to listen on (default 1234)
+  -b <address>                     Address to listen on (default ::)
+  -w <width>                       Width of drawing surface (default 1024)
+  -h <height>                      Height of drawing surface (default 768)
+  -r <update rate>                 Screen update rate in HZ (default 60)
+  -s <ring size>                   Size of network ring buffer in bytes (default 65536)
+  -l <listen threads>              Number of threads used to listen for incoming connections (default 10)
+  -f <frontend,[option=value,...]> Frontend to use as a display. May be specified multiple times. Use -f ? to list available frontends and options
+  -t <fontfile>                    Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>
+  -d <description>                 Set description text to be displayed in upper left corner (default https://github.com/TobleMiner/shoreline)
 ```
 
 ## Frontend options

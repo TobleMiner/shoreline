@@ -36,6 +36,8 @@
 
 #define REPO_URL "https://github.com/TobleMiner/shoreline"
 
+static char* default_description = REPO_URL;
+
 static bool do_exit = false;
 
 extern struct frontend_id frontends[];
@@ -66,7 +68,7 @@ void doshutdown(int sig)
 
 void show_usage(char* binary) {
 	fprintf(stderr, "Usage: %s [-p <port>] [-b <bind address>] [-w <width>] [-h <height>] [-r <screen update rate>] "\
-		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d]\n", binary);
+		"[-s <ring buffer size>] [-l <number of listening threads>] [-f <frontend>] [-t <fontfile>] [-d <description>]\n", binary);
 	fprintf(stderr, "Options:\n");
 	fprintf(stderr, "  -p <port>                        Port to listen on (default %s)\n", PORT_DEFAULT);
 	fprintf(stderr, "  -b <address>                     Address to listen on (default %s)\n", LISTEN_DEFAULT);
@@ -78,7 +80,7 @@ void show_usage(char* binary) {
 	fprintf(stderr, "  -f <frontend,[option=value,...]> Frontend to use as a display. May be specified multiple times. "\
 		"Use -f ? to list available frontends and options\n");
 	fprintf(stderr, "  -t <fontfile>                    Enable fancy text rendering using TTF, OTF or CFF font from <fontfile>\n");
-	fprintf(stderr, "  -d                               Disable display of repo url (https://github.com/TobleMiner/shoreline) in upper left corner\n");
+	fprintf(stderr, "  -d <description>                 Set description text to be displayed in upper left corner (default %s)\n", REPO_URL);
 }
 
 struct resize_wq_priv {
@@ -144,7 +146,7 @@ int main(int argc, char** argv) {
 	unsigned int frontend_cnt = 0;
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
-	bool show_repo_url = true;
+	char* description = default_description;
 	struct textrender* txtrndr = NULL;
 
 	char* port = PORT_DEFAULT;
@@ -160,7 +162,7 @@ int main(int argc, char** argv) {
 	struct timespec before, after;
 	long long time_delta;
 
-	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:t:d?")) != -1) {
+	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:t:d:?")) != -1) {
 		switch(opt) {
 			case('p'):
 				port = optarg;
@@ -229,7 +231,11 @@ int main(int argc, char** argv) {
 				}
 				break;
 			case('d'):
-				show_repo_url = false;
+				description = strdup(optarg);
+				if(!description) {
+					fprintf(stderr, "Failed to allocate memory for description string\n");
+					goto fail;
+				}
 				break;
 			default:
 				show_usage(argv[0]);
@@ -326,15 +332,13 @@ int main(int argc, char** argv) {
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
 		if(txtrndr) {
-			if(show_repo_url) {
-				textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, REPO_URL, 16);
-			}
+			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
 			if(!txtrndr) {
-				if(show_repo_url && frontend_can_draw_string(front)) {
-					frontend_draw_string(front, 0, 0, REPO_URL);
+				if(frontend_can_draw_string(front)) {
+					frontend_draw_string(front, 0, 0, description);
 				}
 			}
 			if((err = frontend_update(front))) {
@@ -371,6 +375,9 @@ fail:
 	}
 	if(txtrndr) {
 		textrender_free(txtrndr);
+	}
+	if(description && description != default_description) {
+		free(description);
 	}
 	workqueue_deinit();
 	return err;
