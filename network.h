@@ -53,6 +53,10 @@ struct net_connection_thread {
 	pthread_t thread;
 	struct llist_entry list;
 	struct net_connection_threadargs threadargs;
+	struct {
+		unsigned int x;
+		unsigned int y;
+	} offset;
 
 	struct ring* ring;
 };

@@ -341,6 +341,8 @@ recv:
 //					fprintf(stderr, "No whitespace after Y coordinate\n");
 					goto recv_more;
 				}
+				x += thread->offset.x;
+				y += thread->offset.y;
 				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
 					// Get pixel
 					if(x < fbsize->width && y < fbsize->height) {
@@ -374,6 +376,23 @@ recv:
 					fprintf(stderr, "Failed to write out size: %d => %s\n", err, strerror(-err));
 					goto fail_ring;
 				}
+			} else if(!ring_memcmp(ring, "OFFSET", strlen("OFFSET"), NULL)) {
+				if((err = net_skip_whitespace(ring)) < 0) {
+					goto recv_more;
+				}
+				if((offset = net_next_whitespace(ring)) < 0) {
+					goto recv_more;
+				}
+				x = net_str_to_uint32_10(ring, offset);
+				if((err = net_skip_whitespace(ring)) < 0) {
+					goto recv_more;
+				}
+				if((offset = net_next_whitespace(ring)) < 0) {
+					goto recv_more;
+				}
+				y = net_str_to_uint32_10(ring, offset);
+				thread->offset.x = x;
+				thread->offset.y = y;
 			} else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
 					printf("Encountered unknown command\n");
