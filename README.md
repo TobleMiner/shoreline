@@ -48,6 +48,15 @@ to use a nonstandard port:
 
 All available frontends and their options can be listed using `shoreline -f ?`.
 
+## Supported Pixelflut commands
+
+```
+PX <x> <y> <rrggbb|aarrggbb> # Set pixel @(x,y) to specified hex color
+PX <x> <y>                   # Get pixel @(x,y) as hex
+SIZE                         # Get size of drawing surface
+OFFSET <x> <y>               # Apply offset (x,y) to all further pixel draws on this connection
+```
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
