@@ -448,7 +448,7 @@ static void* net_listen_thread(void* args) {
 		}
 		printf("Got a new connection\n");
 
-		conn_thread = malloc(sizeof(struct net_connection_thread));
+		conn_thread = calloc(1, sizeof(struct net_connection_thread));
 		if(!conn_thread) {
 			fprintf(stderr, "Failed to allocate memory for connection thread\n");
 			goto fail_connection;
@@ -516,7 +516,7 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storag
 	printf("Listening on %s:%s\n", host_tmp, port_tmp);
 
 	// Allocate space for threads
-	net->threads = malloc(num_threads * sizeof(struct net_thread));
+	net->threads = calloc(num_threads, sizeof(struct net_thread));
 	if(!net->threads) {
 		err = -ENOMEM;
 		goto fail_socket;
