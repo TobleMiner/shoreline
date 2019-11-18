@@ -313,6 +313,7 @@ recv:
 			goto fail_ring;
 		}
 //		printf("Read %zd bytes\n", read_len);
+		fb->byte_counter += read_len;
 		ring_advance_write(ring, read_len);
 
 		while(ring_any_available(ring)) {

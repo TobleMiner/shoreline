@@ -12,6 +12,7 @@
 #include <getopt.h>
 #include <netdb.h>
 #include <time.h>
+#include <sys/sysinfo.h>
 
 #include "framebuffer.h"
 #include "sdl.h"
@@ -148,6 +149,9 @@ int main(int argc, char** argv) {
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
 	char* description = default_description;
+	char* description_load = (char*)calloc(1, 100 * sizeof(char));
+	char* description_pixels = (char*)calloc(1, 100 * sizeof(char));
+	char* description_network = (char*)calloc(1, 100 * sizeof(char));
 	struct textrender* txtrndr = NULL;
 
 	char* port = PORT_DEFAULT;
@@ -160,8 +164,13 @@ int main(int argc, char** argv) {
 	int ringbuffer_size = RINGBUFFER_DEFAULT;
 	int listen_threads = LISTEN_THREADS_DEFAULT;
 
-	struct timespec before, after;
-	long long time_delta;
+	struct timespec before, after, fps_snapshot;
+	long long time_delta, time_delta_since_last_fps_snapshot;
+
+	unsigned int fps_counter = 0, actual_fps = 0;
+	unsigned long pixel_counter_previous_second = 0, actual_pixel_per_s = 0;
+	unsigned long byte_counter_previous_second = 0, actual_byte_per_s = 0;
+	double load_averages[3];
 
 	while((opt = getopt(argc, argv, "p:b:w:h:r:s:l:f:t:d:?")) != -1) {
 		switch(opt) {
@@ -327,18 +336,25 @@ int main(int argc, char** argv) {
 		goto fail_addrinfo;
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &fps_snapshot);
 	while(!do_exit) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
 		if(txtrndr) {
-			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+			textrender_draw_string(txtrndr, fb, 25, fb->size.height / 25, description, 16);
+			textrender_draw_string(txtrndr, fb, 25, fb->size.height / 25 * 2, description_load, 16);
+			textrender_draw_string(txtrndr, fb, 25, fb->size.height / 25 * 3, description_pixels, 16);
+			textrender_draw_string(txtrndr, fb, 25, fb->size.height / 25 * 4, description_network, 16);
 		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
 			if(!txtrndr) {
 				if(frontend_can_draw_string(front)) {
+					frontend_draw_string(front, 0, 45, description_network); // Draw from botton to top because fragments appear above the text, so we overwrite them
+					frontend_draw_string(front, 0, 30, description_pixels);
+					frontend_draw_string(front, 0, 15, description_load);
 					frontend_draw_string(front, 0, 0, description);
 				}
 			}
@@ -349,6 +365,28 @@ int main(int argc, char** argv) {
 			}
 		}
 		clock_gettime(CLOCK_MONOTONIC, &after);
+
+		fps_counter++;
+		time_delta_since_last_fps_snapshot = get_timespec_diff(&after, &fps_snapshot);
+		if (time_delta_since_last_fps_snapshot > 1000000000UL) {
+			actual_fps = fps_counter;
+			fps_counter = 0;
+
+			actual_pixel_per_s = (fb->pixel_counter - pixel_counter_previous_second);
+			pixel_counter_previous_second = fb->pixel_counter;
+
+			actual_byte_per_s = (fb->byte_counter - byte_counter_previous_second);
+			byte_counter_previous_second = fb->byte_counter;
+
+			getloadavg(load_averages, 3);
+
+			sprintf(description_load, "FPS: %d Load: %3.1f %3.1f %3.1f", actual_fps, load_averages[0], load_averages[1], load_averages[2]);
+			sprintf(description_network, "%.2f M pixel/s %.1f G pixels", (double)actual_pixel_per_s / 1e6, (double)fb->pixel_counter / 1e9);
+			sprintf(description_pixels, "%.2f Gb/s %.1f GB received", (double)actual_byte_per_s / (1024 * 1024 * 1024) * 8, (double)fb->byte_counter / 1e9);
+
+			fps_snapshot = after;
+		}
+
 		time_delta = get_timespec_diff(&after, &before);
 		time_delta = 1000000000UL / screen_update_rate - time_delta;
 		if(time_delta > 0) {
