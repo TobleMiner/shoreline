@@ -16,7 +16,7 @@ HDRS = $(wildcard *.h)
 
 all: shoreline
 
-%.o : %.c $(HDRS)
+%.o : %.c $(HDRS) Makefile
 	$(CC) -c $(CCFLAGS) $(DEPFLAGS_CC) $< -o $@
 
 shoreline: $(OBJS)
