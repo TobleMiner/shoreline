@@ -1,12 +1,15 @@
 CC ?= gcc
 RM = rm -f
 
+FEATURES ?= SIZE OFFSET
+
 CCFLAGS = -Wall -D_GNU_SOURCE
 ifeq ($(DEBUG),1)
 	CCFLAGS += -O1 -ggdb
 else
 	CCFLAGS += -Ofast -march=native
 endif
+CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 
 DEPS = sdl2 libvncserver freetype2
 DEPFLAGS_CC = `pkg-config --cflags $(DEPS)`

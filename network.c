@@ -371,12 +371,17 @@ recv:
 //						printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 					}
 				}
-			} else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
+			}
+#ifdef FEATURE_SIZE
+			else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
 				if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "SIZE %u %u\n", fbsize->width, fbsize->height)) < 0) {
 					fprintf(stderr, "Failed to write out size: %d => %s\n", err, strerror(-err));
 					goto fail_ring;
 				}
-			} else if(!ring_memcmp(ring, "OFFSET", strlen("OFFSET"), NULL)) {
+			}
+#endif
+#ifdef FEATURE_OFFSET
+			else if(!ring_memcmp(ring, "OFFSET", strlen("OFFSET"), NULL)) {
 				if((err = net_skip_whitespace(ring)) < 0) {
 					goto recv_more;
 				}
@@ -393,7 +398,9 @@ recv:
 				y = net_str_to_uint32_10(ring, offset);
 				thread->offset.x = x;
 				thread->offset.y = y;
-			} else {
+			}
+#endif
+			else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
 					printf("Encountered unknown command\n");
 					ring_advance_read(ring, offset);
