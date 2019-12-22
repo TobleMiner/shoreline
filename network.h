@@ -61,7 +61,7 @@ struct net_connection_thread {
 		unsigned int x;
 		unsigned int y;
 	} offset;
-	uint64_t byte_count;
+	uint32_t byte_count;
 
 	struct ring* ring;
 };
