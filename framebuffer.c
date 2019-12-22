@@ -82,6 +82,17 @@ void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red
 	target->color.color_bgr.blue = blue;
 }
 
+void fb_clear_rect(struct fb* fb, unsigned int x, unsigned int y, unsigned int width, unsigned int height) {
+	while(height--) {
+		if(y + height >= fb->size.height) {
+			continue;
+		}
+		union fb_pixel* pix = fb_get_line_base(fb, y + height);
+		pix += x;
+		memset(pix, 0, sizeof(union fb_pixel) * max(0, min(width, (int)fb->size.width - (int)width - (int)x)));
+	}
+}
+
 // It might be a good idea to offer a variant returning a pointer to avoid unnecessary copies
 union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
 	assert(x < fb->size.width);
