@@ -29,6 +29,8 @@
 		} \
 	}
 
+#define ARRAY_LEN(arr) (sizeof((arr)) / sizeof(*(arr)))
+
 inline unsigned get_numa_node() {
 	unsigned numa_node;
 	if(syscall(SYS_getcpu, NULL, &numa_node, NULL) == -1) {
