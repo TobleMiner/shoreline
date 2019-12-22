@@ -342,13 +342,14 @@ int main(int argc, char** argv) {
 			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats));
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
-			textrender_draw_string(txtrndr, fb, 100, fb->size.height - 100, stat_line, 16);
+			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
 		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
 			if(!txtrndr) {
 				if(frontend_can_draw_string(front)) {
 					frontend_draw_string(front, 0, 0, description);
+					frontend_draw_string(front, 0, fb->size.height - fb->size.height / 10, stat_line);
 				}
 			}
 			if((err = frontend_update(front))) {
