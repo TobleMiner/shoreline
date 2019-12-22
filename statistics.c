@@ -45,6 +45,10 @@ void statistics_update(struct statistics* stats, struct net* net) {
 	}
 	llist_unlock(net->fb_list);
 	stats->pixels_per_second[stats->average_index] = (stats->num_pixels - pixels_prev) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
+#else
+	// Do a crude estimation if actual pixel count is not available. Average Pixel is about |PX XXX YYY rrggbb\n| = 18 bytes
+	stats->num_pixels += (stats->num_bytes - bytes_prev) / 18;
+	stats->pixels_per_second[stats->average_index] = stats->bytes_per_second[stats->average_index] / 18;
 #endif
 
 	stats->average_index++;
@@ -110,7 +114,6 @@ double statistics_throughput_get_scaled(struct statistics* stats) {
 	return value_get_scaled_1000(bytes_per_second * 8ULL);
 }
 
-#ifdef FEATURE_PIXEL_COUNT
 const char* statistics_pixels_get_unit(struct statistics* stats) {
 	return value_get_unit_1000(stats->num_pixels);
 }
@@ -130,4 +133,3 @@ double statistics_pps_get_scaled(struct statistics* stats) {
 	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
 	return value_get_scaled_1000(pixels_per_second);
 }
-#endif
