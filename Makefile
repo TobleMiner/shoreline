@@ -14,7 +14,7 @@ CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 DEPS = sdl2 libvncserver freetype2
 DEPFLAGS_CC = `pkg-config --cflags $(DEPS)`
 DEPFLAGS_LD = `pkg-config --libs $(DEPS)` -lpthread -lnuma
-OBJS = ring.o llist.o framebuffer.o sdl.o vnc.o network.o main.o workqueue.o frontend.o textrender.o
+OBJS = $(patsubst %.c,%.o,$(wildcard *.c))
 HDRS = $(wildcard *.h)
 
 all: shoreline
