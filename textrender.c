@@ -89,6 +89,7 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 	FT_Error fterr;
 	FT_GlyphSlot ftslot;
 	FT_Vector ftpen;
+	unsigned int xmin = x, ymin = y, xmax = x, ymax = y;
 
 	fterr = FT_Set_Char_Size(txtrndr->ftface, PIXEL_TO_CARTESIAN(size), 0, DPI, DPI);
 	if(fterr) {
@@ -98,6 +99,26 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 	}
 
 	ftslot = txtrndr->ftface->glyph;
+
+	ftpen.x = ftpen.y = 0;
+
+	for(i = 0; i < strlen(text); i++) {
+		fterr = FT_Load_Char(txtrndr->ftface, text[i], FT_LOAD_RENDER);
+		if(fterr) {
+			err = fterr;
+			fprintf(stderr, "Warning: Failed to find glyph for char '%c': %s(%d)\n", text[i], FT_Error_String(fterr), err);
+			continue;
+		}
+
+		xmin = min(xmin, x + CARTESIAN_TO_PIXELS(ftpen.x));
+		ymin = min(ymin, y + CARTESIAN_TO_PIXELS(ftpen.y) - ftslot->bitmap_top);
+		xmax = max(xmax, x + CARTESIAN_TO_PIXELS(ftpen.x) + CARTESIAN_TO_PIXELS(ftslot->metrics.width) + ftslot->bitmap_left);
+		ymax = max(ymax, y + CARTESIAN_TO_PIXELS(ftpen.y) + CARTESIAN_TO_PIXELS(ftslot->metrics.height) - ftslot->bitmap_top);
+		ftpen.x += ftslot->advance.x;
+		ftpen.y += ftslot->advance.y;
+	}
+
+	fb_clear_rect(fb, xmin, ymin, xmax - xmin, ymax - ymin);
 
 	ftpen.x = ftpen.y = 0;
 
