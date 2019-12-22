@@ -3,10 +3,15 @@
 
 #include <stdint.h>
 #include <pthread.h>
+#include <sys/socket.h>
+#include <stdbool.h>
+
+struct net;
 
 #include "framebuffer.h"
 #include "llist.h"
 #include "ring.h"
+#include "statistics.h"
 
 enum {
 	NET_STATE_IDLE,
@@ -15,8 +20,6 @@ enum {
 	NET_STATE_EXIT
 };
 
-struct net;
-
 struct net_threadargs {
 	struct net* net;
 };
@@ -24,6 +27,7 @@ struct net_threadargs {
 struct net_thread {
 	pthread_t thread;
 	struct net_threadargs threadargs;
+	bool initialized;
 
 	struct llist* threadlist;
 };
@@ -57,6 +61,7 @@ struct net_connection_thread {
 		unsigned int x;
 		unsigned int y;
 	} offset;
+	uint64_t byte_count;
 
 	struct ring* ring;
 };

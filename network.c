@@ -312,6 +312,7 @@ recv:
 			}
 			goto fail_ring;
 		}
+		thread->byte_count += read_len;
 //		printf("Read %zd bytes\n", read_len);
 		ring_advance_write(ring, read_len);
 
@@ -462,6 +463,7 @@ static void* net_listen_thread(void* args) {
 		goto fail;
 	}
 	thread->threadlist = threadlist;
+	thread->initialized = true;
 
 	pthread_cleanup_push(net_listen_thread_cleanup_threadlist, thread);
 

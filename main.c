@@ -22,6 +22,7 @@
 #include "frontend.h"
 #include "workqueue.h"
 #include "textrender.h"
+#include "statistics.h"
 
 
 #define PORT_DEFAULT "1234"
@@ -31,6 +32,7 @@
 #define HEIGHT_DEFAULT 768
 #define RINGBUFFER_DEFAULT 65536
 #define LISTEN_THREADS_DEFAULT 10
+#define MAX_STAT_LENGTH 265
 
 #define MAX_FRONTENDS 16
 
@@ -144,6 +146,8 @@ int main(int argc, char** argv) {
 	struct frontend* front;
 	struct sdl_param sdl_param;
 	size_t addr_len;
+	struct statistics stats = { 0 };
+	char stat_line[MAX_STAT_LENGTH];
 	unsigned int frontend_cnt = 0;
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
@@ -332,8 +336,13 @@ int main(int argc, char** argv) {
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
+		statistics_update(&stats, net);
+		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB Throughput: %.3f %sb/s",
+			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
+			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats));
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+			textrender_draw_string(txtrndr, fb, 100, fb->size.height - 100, stat_line, 16);
 		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
