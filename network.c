@@ -367,6 +367,9 @@ recv:
 					}
 //					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 					if(x < fbsize->width && y < fbsize->height) {
+#ifdef FEATURE_PIXEL_COUNT
+						fb->pixel_count++;
+#endif
 						fb_set_pixel(fb, x, y, &pixel);
 					} else {
 //						printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);

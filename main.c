@@ -337,9 +337,11 @@ int main(int argc, char** argv) {
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
 		statistics_update(&stats, net);
-		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB Throughput: %.3f %sb/s",
+		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels Throughput: %.3f %sb/s / %.3f %sPixels/s",
 			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
-			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats));
+			statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
+			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
+			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats));
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);

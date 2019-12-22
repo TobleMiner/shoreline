@@ -13,6 +13,10 @@ void statistics_update(struct statistics* stats, struct net* net) {
 	int i = net->num_threads;
 	struct timespec now;
 	uint64_t bytes_prev = stats->num_bytes;
+#ifdef FEATURE_PIXEL_COUNT
+	uint64_t pixels_prev = stats->num_pixels;
+	struct llist_entry* cursor;
+#endif
 
 	clock_gettime(CLOCK_MONOTONIC, &now);
 	while(i-- > 0) {
@@ -30,8 +34,20 @@ void statistics_update(struct statistics* stats, struct net* net) {
 			llist_unlock(threadlist);
 		}
 	}
+	stats->bytes_per_second[stats->average_index] = (stats->num_bytes - bytes_prev) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
 
-	stats->bytes_per_second[stats->average_index++] = (stats->num_bytes - bytes_prev) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
+#ifdef FEATURE_PIXEL_COUNT
+	llist_lock(net->fb_list);
+	llist_for_each(net->fb_list, cursor) {
+		struct fb* fb = llist_entry_get_value(cursor, struct fb, list);
+		stats->num_pixels += fb->pixel_count;
+		fb->pixel_count = 0;
+	}
+	llist_unlock(net->fb_list);
+	stats->pixels_per_second[stats->average_index] = (stats->num_pixels - pixels_prev) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
+#endif
+
+	stats->average_index++;
 	stats->average_index %= STATISTICS_NUM_AVERAGES;
 	stats->last_update = now;
 }
@@ -93,3 +109,25 @@ double statistics_throughput_get_scaled(struct statistics* stats) {
 	GET_AVERAGE(bytes_per_second, stats, bytes_per_second);
 	return value_get_scaled_1000(bytes_per_second * 8ULL);
 }
+
+#ifdef FEATURE_PIXEL_COUNT
+const char* statistics_pixels_get_unit(struct statistics* stats) {
+	return value_get_unit_1000(stats->num_pixels);
+}
+
+double statistics_pixels_get_scaled(struct statistics* stats) {
+	return value_get_scaled_1000(stats->num_pixels);
+}
+
+const char* statistics_pps_get_unit(struct statistics* stats) {
+	uint64_t pixels_per_second;
+	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
+	return value_get_unit_1000(pixels_per_second);
+}
+
+double statistics_pps_get_scaled(struct statistics* stats) {
+	uint64_t pixels_per_second;
+	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
+	return value_get_scaled_1000(pixels_per_second);
+}
+#endif
