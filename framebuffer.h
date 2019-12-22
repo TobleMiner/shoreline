@@ -34,7 +34,7 @@ struct fb {
 	unsigned numa_node;
 	struct llist_entry list;
 #ifdef FEATURE_PIXEL_COUNT
-	uint64_t pixel_count;
+	uint32_t pixel_count;
 #endif
 };
 
