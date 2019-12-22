@@ -89,7 +89,7 @@ void fb_clear_rect(struct fb* fb, unsigned int x, unsigned int y, unsigned int w
 		}
 		union fb_pixel* pix = fb_get_line_base(fb, y + height);
 		pix += x;
-		memset(pix, 0, sizeof(union fb_pixel) * max(0, min(width, (int)fb->size.width - (int)width - (int)x)));
+		memset(pix, 0, sizeof(union fb_pixel) * max(0, min(width, (int)fb->size.width - (int)x)));
 	}
 }
 
