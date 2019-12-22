@@ -1,3 +1,4 @@
+#ifdef FEATURE_STATISTICS
 #include "statistics.h"
 #include "llist.h"
 
@@ -133,3 +134,4 @@ double statistics_pps_get_scaled(struct statistics* stats) {
 	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
 	return value_get_scaled_1000(pixels_per_second);
 }
+#endif

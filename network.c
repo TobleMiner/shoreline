@@ -312,7 +312,9 @@ recv:
 			}
 			goto fail_ring;
 		}
+#ifdef FEATURE_STATISTICS
 		thread->byte_count += read_len;
+#endif
 //		printf("Read %zd bytes\n", read_len);
 		ring_advance_write(ring, read_len);
 
@@ -367,8 +369,10 @@ recv:
 					}
 //					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
 					if(x < fbsize->width && y < fbsize->height) {
+#ifdef FEATURE_STATISTICS
 #ifdef FEATURE_PIXEL_COUNT
 						fb->pixel_count++;
+#endif
 #endif
 						fb_set_pixel(fb, x, y, &pixel);
 					} else {

@@ -1,3 +1,4 @@
+#ifdef FEATURE_STATISTICS
 #ifndef _STATISTICS_H_
 #define _STATISTICS_H_
 
@@ -28,4 +29,5 @@ double statistics_pixels_get_scaled(struct statistics* stats);
 const char* statistics_pps_get_unit(struct statistics* stats);
 double statistics_pps_get_scaled(struct statistics* stats);
 
+#endif
 #endif

@@ -22,7 +22,9 @@
 #include "frontend.h"
 #include "workqueue.h"
 #include "textrender.h"
+#ifdef FEATURE_STATISTICS
 #include "statistics.h"
+#endif
 
 
 #define PORT_DEFAULT "1234"
@@ -146,8 +148,10 @@ int main(int argc, char** argv) {
 	struct frontend* front;
 	struct sdl_param sdl_param;
 	size_t addr_len;
+#ifdef FEATURE_STATISTICS
 	struct statistics stats = { 0 };
 	char stat_line[MAX_STAT_LENGTH];
+#endif
 	unsigned int frontend_cnt = 0;
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
@@ -336,22 +340,28 @@ int main(int argc, char** argv) {
 		llist_lock(&fb_list);
 		fb_coalesce(fb, &fb_list);
 		llist_unlock(&fb_list);
+#ifdef FEATURE_STATISTICS
 		statistics_update(&stats, net);
 		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels Throughput: %.3f %sb/s / %.3f %sPixels/s",
 			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
 			statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
 			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
 			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats));
+#endif
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+#ifdef FEATURE_STATISTICS
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
+#endif
 		}
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
 			if(!txtrndr) {
 				if(frontend_can_draw_string(front)) {
 					frontend_draw_string(front, 0, 0, description);
+#ifdef FEATURE_STATISTICS
 					frontend_draw_string(front, 0, fb->size.height - fb->size.height / 10, stat_line);
+#endif
 				}
 			}
 			if((err = frontend_update(front))) {

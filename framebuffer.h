@@ -33,8 +33,10 @@ struct fb {
 	union fb_pixel* pixels;
 	unsigned numa_node;
 	struct llist_entry list;
+#ifdef FEATURE_STATISTICS
 #ifdef FEATURE_PIXEL_COUNT
 	uint32_t pixel_count;
+#endif
 #endif
 };
 
