@@ -7,7 +7,8 @@ static const char* UNITS[] = {
 	"k",
 	"M",
 	"G",
-	"T"
+	"T",
+	"P"
 };
 
 void statistics_update(struct statistics* stats, struct net* net) {
