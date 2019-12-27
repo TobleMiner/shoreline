@@ -136,6 +136,25 @@ fail:
 	return err;
 }
 
+struct statistics stats = { 0 };
+struct textrender* txtrndr = NULL;
+char* description = REPO_URL;
+
+void draw_overlays(struct fb* fb) {
+	char stat_line[MAX_STAT_LENGTH];
+	snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels "
+"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %lu connections",
+		statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
+		statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
+		statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
+		statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
+		statistics_get_frames_per_second(&stats), stats.num_connections);
+	if(txtrndr) {
+		textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+		textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
+	}
+}
+
 int main(int argc, char** argv) {
 	int err, opt;
 	struct fb* fb;
@@ -149,14 +168,11 @@ int main(int argc, char** argv) {
 	struct sdl_param sdl_param;
 	size_t addr_len;
 #ifdef FEATURE_STATISTICS
-	struct statistics stats = { 0 };
 	char stat_line[MAX_STAT_LENGTH];
 #endif
 	unsigned int frontend_cnt = 0;
 	char* frontend_names[MAX_FRONTENDS];
 	bool handle_signals = true;
-	char* description = default_description;
-	struct textrender* txtrndr = NULL;
 
 	char* port = PORT_DEFAULT;
 	char* listen_address = LISTEN_DEFAULT;
@@ -352,9 +368,9 @@ int main(int argc, char** argv) {
 			statistics_get_frames_per_second(&stats), stats.num_connections);
 #endif
 		if(txtrndr) {
-			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+//			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 #ifdef FEATURE_STATISTICS
-			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
+//			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
 #endif
 		}
 		llist_for_each(&fronts, cursor) {

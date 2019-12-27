@@ -12,8 +12,17 @@ struct vnc {
 	rfbScreenInfoPtr server;
 	rfbFontDataPtr font;
 	struct fb* fb;
+	struct fb* fb_overlay;
 	struct frontend front;
+	pthread_mutex_t draw_lock;
 };
+
+/*
+struct vnc_client {
+	struct vnc* vnc;
+	struct fb* fb;
+};
+*/
 
 int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv);
 int vnc_start(struct frontend* front);
