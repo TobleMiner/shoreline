@@ -1,6 +1,7 @@
 #ifndef _TEXTRENDER_H_
 #define _TEXTRENDER_H_
 
+#include <pthread.h>
 #include <sys/types.h>
 
 #include <ft2build.h>
@@ -12,6 +13,7 @@
 #endif
 
 struct textrender {
+	pthread_mutex_t font_lock;
 	FT_Library ftlib;
 	FT_Face ftface;
 };

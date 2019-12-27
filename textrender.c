@@ -28,6 +28,8 @@ int textrender_alloc(struct textrender** ret, char* fontfile) {
 		goto fail;
 	}
 
+	pthread_mutex_init(&txtrndr->font_lock, NULL);
+
 	fterr = FT_Init_FreeType(&txtrndr->ftlib);
 	if(fterr) {
 		err = fterr;
@@ -91,6 +93,7 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 	FT_Vector ftpen;
 	unsigned int xmin = x, ymin = y, xmax = x, ymax = y;
 
+	pthread_mutex_lock(&txtrndr->font_lock);
 	fterr = FT_Set_Char_Size(txtrndr->ftface, PIXEL_TO_CARTESIAN(size), 0, DPI, DPI);
 	if(fterr) {
 		err = fterr;
@@ -136,5 +139,6 @@ int textrender_draw_string(struct textrender* txtrndr, struct fb* fb, unsigned i
 		ftpen.y += ftslot->advance.y;
 	}
 fail:
+	pthread_mutex_unlock(&txtrndr->font_lock);
 	return err;
 }

@@ -136,11 +136,14 @@ fail:
 	return err;
 }
 
+#ifdef FEATURE_STATISTICS
 struct statistics stats = { 0 };
+#endif
 struct textrender* txtrndr = NULL;
 char* description = REPO_URL;
 
 void draw_overlays(struct fb* fb) {
+#ifdef FEATURE_STATISTICS
 	char stat_line[MAX_STAT_LENGTH];
 	snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels "
 "Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %lu connections",
@@ -149,9 +152,12 @@ void draw_overlays(struct fb* fb) {
 		statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
 		statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
 		statistics_get_frames_per_second(&stats), stats.num_connections);
+#endif
 	if(txtrndr) {
 		textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+#ifdef FEATURE_STATISTICS
 		textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
+#endif
 	}
 }
 
@@ -367,10 +373,11 @@ int main(int argc, char** argv) {
 			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
 			statistics_get_frames_per_second(&stats), stats.num_connections);
 #endif
+		draw_overlays(fb);
 		if(txtrndr) {
-//			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
+			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 #ifdef FEATURE_STATISTICS
-//			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
+			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
 #endif
 		}
 		llist_for_each(&fronts, cursor) {
@@ -389,7 +396,9 @@ int main(int argc, char** argv) {
 				break;
 			}
 		}
+#ifdef FEATURE_STATISTICS
 		stats.num_frames++;
+#endif
 		clock_gettime(CLOCK_MONOTONIC, &after);
 		time_delta = get_timespec_diff(&after, &before);
 		time_delta = 1000000000UL / screen_update_rate - time_delta;

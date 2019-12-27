@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <stdio.h>
 
+#include "main.h"
 #include "vnc.h"
 #include "framebuffer.h"
 
@@ -15,49 +16,30 @@ static const struct frontend_ops fops = {
 static const struct frontend_arg fargs[] = {
 	{ .name = "port", .configure = vnc_configure_port },
 	{ .name = "font", .configure = vnc_configure_font },
+	{ .name = "flickerfree", .configure = vnc_configure_flicker },
 	{ .name = "", .configure = NULL },
 };
 
 DECLARE_FRONTEND_SIG_ARGS(front_vnc, "VNC server frontend", &fops, fargs);
 
-/*
-static rfbNewClientAction client_connect_cb(struct _rfbClientRec* client) {
-	int err;
-	struct fb* fb;
-	struct vnc* vnc = client->screen->screenData;
-	struct vnc_client* vnc_client = calloc(1, sizeof(struct vnc_client));
-	if(!vnc_client) {
-		err = ENOMEM;
-		fprintf(stderr, "Failed to allocate vnc client: %s (%d)", strerror(err), err);
-		goto fail;
-	}
-	
-	vnc_client->vnc = vnc;
-	if((err = fb_alloc(&fb, vnc->fb->size.widht, vnc->fb->size.height)) {
-		fprintf(stderr, "Failed to allocate vnc client: %s (%d)", strerror(err), err);
-		goto fail_client;
-	}
-	vnc_client->fb = fb;
-	client->clientData = vnc_client;
-
-	return RFB_CLIENT_ACCEPT;
-
-fail_client:
-	free(vnc_client);
-fail:
-	return RFB_CLIENT_REFUSE;
+static void set_shared(struct vnc* vnc, bool shared) {
+	vnc->server->alwaysShared = shared ? TRUE : FALSE;
+	vnc->server->neverShared = shared ? FALSE  : TRUE;
 }
-*/
 
 static void pre_display_cb(struct _rfbClientRec* client) {
 	struct vnc* vnc = client->screen->screenData;
-	pthread_mutex_lock(&vnc->draw_lock);
-	draw_overlays(vnc->fb_overlay);
+	if(vnc->front.sync_overlay_draw) {
+		pthread_mutex_lock(&vnc->draw_lock);
+		draw_overlays(vnc->fb_overlay);
+	}
 }
 
 static void post_display_cb(struct _rfbClientRec* client, int result) {
 	struct vnc* vnc = client->screen->screenData;
-	pthread_mutex_unlock(&vnc->draw_lock);
+	if(vnc->front.sync_overlay_draw) {
+		pthread_mutex_unlock(&vnc->draw_lock);
+	}
 }
 
 int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
@@ -99,7 +81,7 @@ int vnc_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	vnc->server->screenData = vnc;
 	vnc->server->frameBuffer = (char *)vnc->fb_overlay->pixels;
 	vnc->server->desktopName = "shoreline";
-	vnc->server->alwaysShared = TRUE;
+	set_shared(vnc, true);
 
 	*ret = &vnc->front;
 
@@ -129,9 +111,13 @@ void vnc_free(struct frontend* front) {
 
 int vnc_update(struct frontend* front) {
 	struct vnc* vnc = container_of(front, struct vnc, front);
-	pthread_mutex_lock(&vnc->draw_lock);
+	if(front->sync_overlay_draw) {
+		pthread_mutex_lock(&vnc->draw_lock);
+	}
 	fb_copy(vnc->fb_overlay, vnc->fb);
-	pthread_mutex_unlock(&vnc->draw_lock);
+	if(front->sync_overlay_draw) {
+		pthread_mutex_unlock(&vnc->draw_lock);
+	}
 	rfbMarkRectAsModified(vnc->server, 0, 0, vnc->fb->size.width, vnc->fb->size.height);
 	return !rfbIsActive(vnc->server);
 }
@@ -176,5 +162,12 @@ int vnc_configure_font(struct frontend* front, char* value) {
 		return -EINVAL;
 	}
 
+	return 0;
+}
+
+int vnc_configure_flicker(struct frontend* front, char* value) {
+	struct vnc* vnc = container_of(front, struct vnc, front);
+	front->sync_overlay_draw = true;
+	set_shared(vnc, false);
 	return 0;
 }
