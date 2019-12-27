@@ -342,11 +342,12 @@ int main(int argc, char** argv) {
 		llist_unlock(&fb_list);
 #ifdef FEATURE_STATISTICS
 		statistics_update(&stats, net);
-		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels Throughput: %.3f %sb/s / %.3f %sPixels/s",
+		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s",
 			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
 			statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
 			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
-			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats));
+			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
+			statistics_get_frames_per_second(&stats));
 #endif
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
@@ -370,6 +371,7 @@ int main(int argc, char** argv) {
 				break;
 			}
 		}
+		stats.num_frames++;
 		clock_gettime(CLOCK_MONOTONIC, &after);
 		time_delta = get_timespec_diff(&after, &before);
 		time_delta = 1000000000UL / screen_update_rate - time_delta;

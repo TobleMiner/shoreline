@@ -52,10 +52,12 @@ void statistics_update(struct statistics* stats, struct net* net) {
 	stats->num_pixels += (stats->num_bytes - bytes_prev) / 18;
 	stats->pixels_per_second[stats->average_index] = stats->bytes_per_second[stats->average_index] / 18;
 #endif
+	stats->frames_per_second[stats->average_index] = (stats->num_frames - stats->last_num_frames) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
 
 	stats->average_index++;
 	stats->average_index %= STATISTICS_NUM_AVERAGES;
 	stats->last_update = now;
+	stats->last_num_frames = stats->num_frames;
 }
 
 #define GET_AVERAGE(var, stats, field) \
@@ -134,5 +136,11 @@ double statistics_pps_get_scaled(struct statistics* stats) {
 	uint64_t pixels_per_second;
 	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
 	return value_get_scaled_1000(pixels_per_second);
+}
+
+int statistics_get_frames_per_second(struct statistics* stats) {
+	unsigned int fps;
+	GET_AVERAGE(fps, stats, frames_per_second);
+	return fps;
 }
 #endif

@@ -14,6 +14,9 @@ struct statistics {
 	int average_index;
 	uint64_t bytes_per_second[STATISTICS_NUM_AVERAGES];
 	uint64_t pixels_per_second[STATISTICS_NUM_AVERAGES];
+	uint64_t frames_per_second[STATISTICS_NUM_AVERAGES];
+	uint64_t last_num_frames;
+	uint64_t num_frames;
 	struct timespec last_update;
 };
 
@@ -29,5 +32,6 @@ double statistics_pixels_get_scaled(struct statistics* stats);
 const char* statistics_pps_get_unit(struct statistics* stats);
 double statistics_pps_get_scaled(struct statistics* stats);
 
+int statistics_get_frames_per_second(struct statistics* stats);
 #endif
 #endif
