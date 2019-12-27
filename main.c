@@ -343,12 +343,13 @@ int main(int argc, char** argv) {
 		llist_unlock(&fb_list);
 #ifdef FEATURE_STATISTICS
 		statistics_update(&stats, net);
-		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s",
+		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels "
+"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %lu connections",
 			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
 			statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
 			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
 			statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
-			statistics_get_frames_per_second(&stats));
+			statistics_get_frames_per_second(&stats), stats.num_connections);
 #endif
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);

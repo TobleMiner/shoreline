@@ -15,6 +15,7 @@ void statistics_update(struct statistics* stats, struct net* net) {
 	int i = net->num_threads;
 	struct timespec now;
 	uint64_t bytes_prev = stats->num_bytes;
+	uint64_t num_connections = 0;
 #ifdef FEATURE_PIXEL_COUNT
 	uint64_t pixels_prev = stats->num_pixels;
 	struct llist_entry* cursor;
@@ -32,10 +33,12 @@ void statistics_update(struct statistics* stats, struct net* net) {
 				struct net_connection_thread* conn_thread = llist_entry_get_value(cursor, struct net_connection_thread, list);
 				stats->num_bytes += conn_thread->byte_count;
 				conn_thread->byte_count = 0;
+				num_connections++;
 			}
 			llist_unlock(threadlist);
 		}
 	}
+	stats->num_connections = num_connections;
 	stats->bytes_per_second[stats->average_index] = (stats->num_bytes - bytes_prev) * 1000000000UL / get_timespec_diff(&now, &stats->last_update);
 
 #ifdef FEATURE_PIXEL_COUNT

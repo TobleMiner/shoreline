@@ -11,6 +11,7 @@
 struct statistics {
 	uint64_t num_bytes;
 	uint64_t num_pixels;
+	uint64_t num_connections;
 	int average_index;
 	uint64_t bytes_per_second[STATISTICS_NUM_AVERAGES];
 	uint64_t pixels_per_second[STATISTICS_NUM_AVERAGES];
