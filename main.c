@@ -335,6 +335,7 @@ int main(int argc, char** argv) {
 		goto fail_addrinfo;
 	}
 
+	nice(-20);
 	while(!do_exit) {
 		clock_gettime(CLOCK_MONOTONIC, &before);
 		llist_lock(&fb_list);
