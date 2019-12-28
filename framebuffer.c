@@ -133,6 +133,12 @@ fail:
 	return err;
 }
 
+void fb_copy(struct fb* dst, struct fb* src) {
+	assert(dst->size.width == src->size.width);
+	assert(dst->size.height == src->size.height);
+	memcpy(dst->pixels, src->pixels, dst->size.width * dst->size.height * sizeof(union fb_pixel));
+}
+
 int fb_coalesce(struct fb* fb, struct llist* fbs) {
 	struct llist_entry* cursor;
 	struct fb* other;

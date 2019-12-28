@@ -71,6 +71,7 @@ struct frontend_def {
 struct frontend {
 	struct frontend_def* def;
 	struct llist_entry list;
+	bool sync_overlay_draw;
 };
 
 struct frontend_id {

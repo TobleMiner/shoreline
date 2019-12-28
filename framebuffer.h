@@ -54,6 +54,7 @@ void fb_clear_rect(struct fb* fb, unsigned int x, unsigned int y, unsigned int w
 union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y);
 int fb_resize(struct fb* fb, unsigned int width, unsigned int height);
 int fb_coalesce(struct fb* fb, struct llist* fbs);
+void fb_copy(struct fb* dst, struct fb* src);
 
 // Info
 inline struct fb_size* fb_get_size(struct fb* fb) {
