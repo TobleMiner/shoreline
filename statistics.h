@@ -32,6 +32,7 @@ struct statistics_frontend {
 	char* listen_port;
 	char* listen_address;
 	struct sockaddr_storage listen_addr;
+	bool thread_created;
 	pthread_t listen_thread;
 	pthread_mutex_t stats_lock;
 	struct statistics stats;

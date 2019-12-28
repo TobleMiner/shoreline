@@ -195,7 +195,7 @@ static void* api_thread(void* args) {
 			break;
 		}
 		pthread_mutex_lock(&sfront->stats_lock);
-		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %lu, \"pixels\": %lu }, \"throughput\": { \"bytes\": %lu, \"pixels\": %lu }, \"connections\": %lu, \"fps\": %lu }",
+		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %lu, \"pixels\": %lu }, \"throughput\": { \"bytes\": %lu, \"pixels\": %lu }, \"connections\": %lu, \"fps\": %lu }\n",
 			sfront->stats.num_bytes, sfront->stats.num_pixels,
 			bytes_per_second, pixels_per_second,
 			sfront->stats.num_connections,
@@ -251,6 +251,7 @@ static int statistics_frontend_start(struct frontend* front) {
 	if((err = -pthread_create(&sfront->listen_thread, NULL, api_thread, sfront))) {
 		goto fail_socket;
 	}
+	sfront->thread_created = true;
 
 	return 0;
 
@@ -266,6 +267,10 @@ fail:
 
 static void statistics_frontend_free(struct frontend* front) {
 	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	sfront->exit = true;
+	if(sfront->thread_created) {
+		pthread_join(sfront->listen_thread, NULL);
+	}
 	if(sfront->socket >= 0) {
 		close(sfront->socket);
 	}
