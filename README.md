@@ -79,6 +79,42 @@ This is an example json object returned by the API:
 }
 ```
 
+# Troubleshooting
+
+When using shoreline with a lot of clients default resource limits applied to processes may not be sufficient.
+
+## sysctl
+
+The default maximum number of allowed vm mappings may not be enough. Consider increasing it by setting
+
+```
+vm.max_map_count = 1000000
+```
+
+in `/etc/sysctl.d/50-vm.conf` and reloading it using `sysctl --system`.
+
+## security/limits
+
+Shoreline can hit the maximum number of allowed file desciptors quite easily. Increase it by setting
+
+```
+*		soft 	nofile		262144
+*		hard 	nofile		262144
+```
+in `/etc/security/limits.conf`.
+
+## systemd
+
+When running shoreline through a systemd service you will need to increase the default cgroup limits for larger installations.
+Consider adding the following to the `[Service]` section of your shoreline unit file.
+
+```
+TasksMax=infinity
+LimitSTACK=infinity
+LimitNOFILE=infinity
+LimitNPROC=infinity
+```
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
@@ -86,3 +122,4 @@ Shoreline can easily handle full 10G line speed traffic on half way decent hardw
 On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 ECC memory @2666 MHz, 6 memory channels) we are at about 37 Gbit/s
 
 These results were obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
+
