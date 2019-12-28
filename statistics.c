@@ -181,10 +181,6 @@ static void* api_thread(void* args) {
 	uint64_t pixels_per_second;
 	uint64_t frames_per_second;
 
-	GET_AVERAGE(bytes_per_second, &sfront->stats, bytes_per_second);
-	GET_AVERAGE(pixels_per_second, &sfront->stats, pixels_per_second);
-	GET_AVERAGE(frames_per_second, &sfront->stats, frames_per_second);
-
 	while(!sfront->exit) {
 		size_t len;
 		ssize_t write_len;
@@ -195,6 +191,10 @@ static void* api_thread(void* args) {
 			break;
 		}
 		pthread_mutex_lock(&sfront->stats_lock);
+		GET_AVERAGE(bytes_per_second, &sfront->stats, bytes_per_second);
+		GET_AVERAGE(pixels_per_second, &sfront->stats, pixels_per_second);
+		GET_AVERAGE(frames_per_second, &sfront->stats, frames_per_second);
+
 		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %lu, \"pixels\": %lu }, \"throughput\": { \"bytes\": %lu, \"pixels\": %lu }, \"connections\": %lu, \"fps\": %lu }\n",
 			sfront->stats.num_bytes, sfront->stats.num_pixels,
 			bytes_per_second, pixels_per_second,
