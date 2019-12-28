@@ -2,7 +2,10 @@
 #ifndef _STATISTICS_H_
 #define _STATISTICS_H_
 
+#include <stdbool.h>
 #include <stdint.h>
+
+struct statistics;
 
 #include "network.h"
 
@@ -19,6 +22,21 @@ struct statistics {
 	uint64_t last_num_frames;
 	uint64_t num_frames;
 	struct timespec last_update;
+};
+
+#include "frontend.h"
+
+struct statistics_frontend {
+	struct frontend front;
+	int socket;
+	char* listen_port;
+	char* listen_address;
+	struct sockaddr_storage listen_addr;
+	pthread_t listen_thread;
+	pthread_mutex_t stats_lock;
+	struct statistics stats;
+	struct addrinfo* addr_list;
+	bool exit;
 };
 
 void statistics_update(struct statistics* stats, struct net* net);

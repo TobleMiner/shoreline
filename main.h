@@ -3,6 +3,8 @@
 
 #include "framebuffer.h"
 
+extern struct statistics stats;
+
 void draw_overlays(struct fb* fb);
 
 #endif

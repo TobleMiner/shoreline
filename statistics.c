@@ -1,6 +1,17 @@
 #ifdef FEATURE_STATISTICS
+#include <errno.h>
+#include <netdb.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+
 #include "statistics.h"
 #include "llist.h"
+#include "main.h"
+
+#define STATISTICS_API_LISTEN_PORT_DEFAULT "1235"
+#define STATISTICS_API_LISTEN_ADDRESS_DEFAULT "::"
 
 static const char* UNITS[] = {
 	"",
@@ -146,4 +157,171 @@ int statistics_get_frames_per_second(struct statistics* stats) {
 	GET_AVERAGE(fps, stats, frames_per_second);
 	return fps;
 }
+
+
+static int statistics_frontend_alloc(struct frontend** ret, struct fb* fb, void* priv) {
+	struct statistics_frontend* sfront = calloc(1, sizeof(struct statistics_frontend));
+	if(!sfront) {
+		return -ENOMEM;
+	}
+	sfront->socket = -1;
+	sfront->listen_port = STATISTICS_API_LISTEN_PORT_DEFAULT;
+	sfront->listen_address = STATISTICS_API_LISTEN_ADDRESS_DEFAULT;
+	pthread_mutex_init(&sfront->stats_lock, NULL);
+	*ret = &sfront->front;
+	return 0;
+}
+
+#define API_STRBUF_LEN 1024
+
+static void* api_thread(void* args) {
+	struct statistics_frontend* sfront = args;
+	char strbuf[API_STRBUF_LEN];
+	uint64_t bytes_per_second;
+	uint64_t pixels_per_second;
+	uint64_t frames_per_second;
+
+	GET_AVERAGE(bytes_per_second, &sfront->stats, bytes_per_second);
+	GET_AVERAGE(pixels_per_second, &sfront->stats, pixels_per_second);
+	GET_AVERAGE(frames_per_second, &sfront->stats, frames_per_second);
+
+	while(!sfront->exit) {
+		size_t len;
+		ssize_t write_len;
+		char* buf = strbuf;
+		int sock = accept(sfront->socket, NULL, NULL);
+		if(sock < 0) {
+			fprintf(stderr, "Listener failed, bailing out: %d => %s\n", errno, strerror(errno));
+			break;
+		}
+		pthread_mutex_lock(&sfront->stats_lock);
+		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %lu, \"pixels\": %lu }, \"throughput\": { \"bytes\": %lu, \"pixels\": %lu }, \"connections\": %lu, \"fps\": %lu }",
+			sfront->stats.num_bytes, sfront->stats.num_pixels,
+			bytes_per_second, pixels_per_second,
+			sfront->stats.num_connections,
+			frames_per_second);
+		pthread_mutex_unlock(&sfront->stats_lock);
+		while(len > 0) {
+			write_len = write(sock, buf, len);
+			if(write_len < 0) {
+				fprintf(stderr, "Failed to write to API client: %d => %s\n", errno, strerror(errno));
+				break;
+			}
+			len -= write_len;
+			buf += write_len;
+		}
+		close(sock);
+	}
+	return NULL;
+}
+
+static int statistics_frontend_start(struct frontend* front) {
+	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	int err;
+	int sock;
+	struct addrinfo* addr_list;
+	size_t addr_len;
+	struct sockaddr_storage* listen_addr;
+
+	if((err = -getaddrinfo(sfront->listen_address, sfront->listen_port, NULL, &addr_list))) {
+		goto fail;
+	}
+	sfront->addr_list = addr_list;
+	listen_addr = (struct sockaddr_storage*)addr_list->ai_addr;
+	addr_len = addr_list->ai_addrlen;
+
+	if((sock = socket(listen_addr->ss_family, SOCK_STREAM, 0)) < 0) {
+		err = -errno;
+		goto fail_addrlist;
+	}
+
+	if(bind(sock, (struct sockaddr*)listen_addr, addr_len) < 0) {
+		fprintf(stderr, "Failed to bind to %s:%s %d => %s\n", sfront->listen_address, sfront->listen_port, errno, strerror(errno));
+		err = -errno;
+		goto fail_socket;
+	}
+
+	if(listen(sock, 10)) {
+		fprintf(stderr, "Failed to start listening: %d => %s\n", errno, strerror(errno));
+		err = -errno;
+		goto fail_socket;
+	}
+	sfront->socket = sock;
+
+	if((err = -pthread_create(&sfront->listen_thread, NULL, api_thread, sfront))) {
+		goto fail_socket;
+	}
+
+	return 0;
+
+fail_socket:
+	close(sock);
+	sfront->socket = -1;
+fail_addrlist:
+	freeaddrinfo(addr_list);
+	sfront->addr_list = NULL;
+fail:
+	return err;
+}
+
+static void statistics_frontend_free(struct frontend* front) {
+	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	if(sfront->socket >= 0) {
+		close(sfront->socket);
+	}
+	if(sfront->addr_list) {
+		freeaddrinfo(sfront->addr_list);
+	}
+	free(sfront);
+}
+
+static int statistics_frontend_update_statistics(struct frontend* front) {
+	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	pthread_mutex_lock(&sfront->stats_lock);
+	sfront->stats = stats;
+	pthread_mutex_unlock(&sfront->stats_lock);
+	return 0;
+}
+
+static int statistics_frontend_configure_port(struct frontend* front, char* value) {
+	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	if(!value) {
+		return -EINVAL;
+	}
+
+	int port = atoi(value);
+	if(port < 0 || port > 65535) {
+		return -EINVAL;
+	}
+
+	sfront->listen_port = value;
+
+	return 0;
+}
+
+static int statistics_frontend_configure_listen_address(struct frontend* front, char* value) {
+	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
+	if(!value) {
+		return -EINVAL;
+	}
+
+	sfront->listen_address = value;
+	return 0;
+}
+
+static const struct frontend_ops fops = {
+	.alloc = statistics_frontend_alloc,
+	.start = statistics_frontend_start,
+	.free = statistics_frontend_free,
+	.update = statistics_frontend_update_statistics,
+};
+
+static const struct frontend_arg fargs[] = {
+	{ .name = "port", .configure = statistics_frontend_configure_port },
+	{ .name = "listen", .configure = statistics_frontend_configure_listen_address },
+	{ .name = "", .configure = NULL },
+};
+
+DECLARE_FRONTEND_SIG_ARGS(front_statistics, "Statistics API provider frontend", &fops, fargs);
+
 #endif

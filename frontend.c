@@ -7,10 +7,16 @@
 
 extern struct frontend_def front_sdl;
 extern struct frontend_def front_vnc;
+#ifdef FEATURE_STATISTICS
+extern struct frontend_def front_statistics;
+#endif
 
 struct frontend_id frontends[] = {
 	{ "sdl", &front_sdl },
 	{ "vnc", &front_vnc },
+#ifdef FEATURE_STATISTICS
+	{ "statistics", &front_statistics },
+#endif
 	{ NULL, NULL }
 };
 

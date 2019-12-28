@@ -3,10 +3,10 @@
 
 #include <stdbool.h>
 
+struct frontend;
+
 #include "framebuffer.h"
 #include "llist.h"
-
-struct frontend;
 
 #define FRONTEND_ALLOC(name) int (*name)(struct frontend** res, struct fb* fb, void* priv)
 #define FRONTEND_START(name) int (*name)(struct frontend* front)
