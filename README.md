@@ -95,7 +95,7 @@ in `/etc/sysctl.d/50-vm.conf` and reloading it using `sysctl --system`.
 
 ## security/limits
 
-Shoreline can hit the maximum number of allowed file desciptors quite easily. Increase it by setting
+Shoreline can hit the maximum number of allowed file descriptors quite easily. Increase it by setting
 
 ```
 *		soft 	nofile		262144
