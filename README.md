@@ -57,6 +57,28 @@ SIZE                         # Get size of drawing surface
 OFFSET <x> <y>               # Apply offset (x,y) to all further pixel draws on this connection
 ```
 
+## Statistics API
+
+There is a special frontend called `statistics`. When enabled it serves a simple TCP based statistics API (default port 1235). Upon
+connecting to the statistics API it dumps a JSON object and closes the connection.
+
+This is an example json object returned by the API:
+
+```
+{
+  "traffic": {
+    "bytes": 7292518314,
+    "pixels": 405139493
+  },
+  "throughput": {
+    "bytes": 512289334,
+    "pixels": 28460518
+  },
+  "connections": 10,
+  "fps": 59
+}
+```
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
