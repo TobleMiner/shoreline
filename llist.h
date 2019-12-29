@@ -29,6 +29,9 @@ struct llist_entry {
 #define llist_for_each(list, cursor) \
 	for(cursor = (list)->head; (cursor) != NULL; (cursor) = (cursor)->next)
 
+#define llist_for_each_safe(list, cursor, nxt) \
+	for(cursor = (list)->head, (nxt) = (list)->head ? (list)->head->next : NULL; (cursor) != NULL; (cursor) = (nxt), (nxt) = (cursor) ? (cursor)->next : NULL)
+
 #define llist_lock(llist) pthread_mutex_lock(&(llist)->lock);
 #define llist_unlock(llist) pthread_mutex_unlock(&(llist)->lock);
 
