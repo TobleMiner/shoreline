@@ -220,6 +220,7 @@ static int statistics_frontend_start(struct frontend* front) {
 	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
 	int err;
 	int sock;
+	int one = 1;
 	struct addrinfo* addr_list;
 	size_t addr_len;
 	struct sockaddr_storage* listen_addr;
@@ -235,6 +236,7 @@ static int statistics_frontend_start(struct frontend* front) {
 		err = -errno;
 		goto fail_addrlist;
 	}
+	setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(int));
 
 	if(bind(sock, (struct sockaddr*)listen_addr, addr_len) < 0) {
 		fprintf(stderr, "Failed to bind to %s:%s %d => %s\n", sfront->listen_address, sfront->listen_port, errno, strerror(errno));
