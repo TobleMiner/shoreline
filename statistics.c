@@ -210,6 +210,7 @@ static void* api_thread(void* args) {
 			len -= write_len;
 			buf += write_len;
 		}
+		shutdown(sock, SHUT_RDWR);
 		close(sock);
 	}
 	return NULL;
