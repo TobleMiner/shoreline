@@ -269,6 +269,7 @@ static void statistics_frontend_free(struct frontend* front) {
 	struct statistics_frontend* sfront = container_of(front, struct statistics_frontend, front);
 	sfront->exit = true;
 	if(sfront->thread_created) {
+		pthread_cancel(sfront->listen_thread);
 		pthread_join(sfront->listen_thread, NULL);
 	}
 	if(sfront->socket >= 0) {
