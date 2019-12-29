@@ -169,7 +169,7 @@ int main(int argc, char** argv) {
 	struct addrinfo* addr_list;
 	struct net* net;
 	struct llist fronts;
-	struct llist_entry* cursor;
+	struct llist_entry* cursor, *next;
 	struct frontend* front;
 	struct sdl_param sdl_param;
 	size_t addr_len;
@@ -414,7 +414,7 @@ fail_addrinfo:
 fail_net:
 	net_free(net);
 fail_fronts:
-	llist_for_each(&fronts, cursor) {
+	llist_for_each_safe(&fronts, cursor, next) {
 		front = llist_entry_get_value(cursor, struct frontend, list);
 		printf("Shutting down frontend '%s'\n", front->def->name);
 		frontend_free(front);
