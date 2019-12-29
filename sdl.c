@@ -22,7 +22,7 @@ DECLARE_FRONTEND_NOSIG(front_sdl, "SDL2 Frontend", &fops);
 int sdl_alloc(struct frontend** ret, struct fb* fb, void* priv) {
 	int err = 0;
 	struct sdl_param* params = priv;
-	struct sdl* sdl = malloc(sizeof(struct sdl));
+	struct sdl* sdl = calloc(1, sizeof(struct sdl));
 	struct fb_size* size;
 	if(!sdl) {
 		err = -ENOMEM;
