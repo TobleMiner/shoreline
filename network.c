@@ -232,7 +232,9 @@ static void net_connection_thread_cleanup_socket(void* args) {
 
 static void net_connection_thread_cleanup_self(void* args) {
 	struct net_connection_thread* thread = args;
+	pthread_mutex_lock(&thread->threadargs.net_thread->list_lock);
 	llist_remove(&thread->list);
+	pthread_mutex_unlock(&thread->threadargs.net_thread->list_lock);
 	free(thread);
 }
 
@@ -465,6 +467,7 @@ static void* net_listen_thread(void* args) {
 
 	struct llist* threadlist;
 	struct net_connection_thread* conn_thread;
+	pthread_mutex_init(&thread->list_lock, NULL);
 
 	if((err = llist_alloc(&threadlist))) {
 		fprintf(stderr, "Failed to allocate thread list\n");
@@ -492,13 +495,17 @@ static void* net_listen_thread(void* args) {
 		llist_entry_init(&conn_thread->list);
 		conn_thread->threadargs.socket = socket;
 		conn_thread->threadargs.net = net;
+		conn_thread->threadargs.net_thread = thread;
 
+		pthread_mutex_lock(&thread->list_lock);
 		if((err = -pthread_create(&conn_thread->thread, NULL, net_connection_thread, &conn_thread->threadargs))) {
 			fprintf(stderr, "Failed to create thread: %d => %s\n", err, strerror(-err));
+			pthread_mutex_unlock(&thread->list_lock);
 			goto fail_thread_entry;
 		}
 
 		llist_append(threadlist, &conn_thread->list);
+		pthread_mutex_unlock(&thread->list_lock);
 
 		continue;
 
