@@ -56,9 +56,9 @@ void fb_free(struct fb* fb) {
 }
 
 void fb_free_all(struct llist* fbs) {
-	struct llist_entry* cursor;
-	llist_for_each(fbs, cursor) {
-		free(llist_entry_get_value(cursor, struct fb, list));
+	struct llist_entry* cursor, *next;
+	llist_for_each_safe(fbs, cursor, next) {
+		fb_free((struct fb*)llist_entry_get_value(cursor, struct fb, list));
 	}
 }
 
