@@ -28,6 +28,7 @@ struct net_thread {
 	pthread_t thread;
 	struct net_threadargs threadargs;
 	bool initialized;
+	pthread_mutex_t list_lock;
 
 	struct llist* threadlist;
 };
@@ -50,6 +51,7 @@ struct net {
 
 struct net_connection_threadargs {
 	struct net* net;
+	struct net_thread* net_thread;
 	int socket;
 };
 
