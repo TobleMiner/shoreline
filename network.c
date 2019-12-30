@@ -431,6 +431,7 @@ fail_socket:
 	pthread_cleanup_pop(true);
 	pthread_cleanup_pop(true);
 fail:
+	pthread_detach(pthread_self());
 	return NULL;
 
 recv_more:
