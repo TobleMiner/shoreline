@@ -14,14 +14,17 @@
 #include <time.h>
 
 #include "framebuffer.h"
+#ifdef FEATURE_SDL
 #include "sdl.h"
-#include "vnc.h"
+#endif
 #include "network.h"
 #include "llist.h"
 #include "util.h"
 #include "frontend.h"
 #include "workqueue.h"
+#ifdef FEATURE_TTF
 #include "textrender.h"
+#endif
 #ifdef FEATURE_STATISTICS
 #include "statistics.h"
 #endif
@@ -107,6 +110,7 @@ void resize_wq_cleanup(int err, void* priv) {
 	free(priv);
 }
 
+#ifdef FEATURE_SDL
 int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 	struct llist* fb_list = sdl->cb_private;
 	struct llist_entry* cursor;
@@ -135,11 +139,14 @@ int resize_cb(struct sdl* sdl, unsigned int width, unsigned int height) {
 fail:
 	return err;
 }
+#endif
 
 #ifdef FEATURE_STATISTICS
 struct statistics stats = { 0 };
 #endif
+#ifdef FEATURE_TTF
 struct textrender* txtrndr = NULL;
+#endif
 char* description = REPO_URL;
 
 void draw_overlays(struct fb* fb) {
@@ -153,12 +160,14 @@ void draw_overlays(struct fb* fb) {
 		statistics_pps_get_scaled(&stats), statistics_pps_get_unit(&stats),
 		statistics_get_frames_per_second(&stats), stats.num_connections);
 #endif
+#ifdef FEATURE_TTF
 	if(txtrndr) {
 		textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 #ifdef FEATURE_STATISTICS
 		textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
 #endif
 	}
+#endif
 }
 
 int main(int argc, char** argv) {
@@ -171,7 +180,9 @@ int main(int argc, char** argv) {
 	struct llist fronts;
 	struct llist_entry* cursor, *next;
 	struct frontend* front;
+#ifdef FEATURE_SDL
 	struct sdl_param sdl_param;
+#endif
 	size_t addr_len;
 #ifdef FEATURE_STATISTICS
 	char stat_line[MAX_STAT_LENGTH];
@@ -256,15 +267,22 @@ int main(int argc, char** argv) {
 				frontend_cnt++;
 				break;
 			case('t'):
+#ifdef FEATURE_TTF
 				if((err = textrender_alloc(&txtrndr, optarg))) {
 					fprintf(stderr, "Failed to allocate freetype text renderer\n");
 					goto fail;
 				}
+#else
+				fprintf(stderr, "Shoreline was compiled without font rendering support!\n");
+				err = -EINVAL;
+				goto fail;
+#endif
 				break;
 			case('d'):
 				description = strdup(optarg);
 				if(!description) {
 					fprintf(stderr, "Failed to allocate memory for description string\n");
+					err = -ENOMEM;
 					goto fail;
 				}
 				break;
@@ -290,8 +308,10 @@ int main(int argc, char** argv) {
 	}
 
 	llist_init(&fb_list);
+#ifdef FEATURE_SDL
 	sdl_param.cb_private = &fb_list;
 	sdl_param.resize_cb = resize_cb;
+#endif
 	llist_init(&fronts);
 	while(frontend_cnt > 0 && frontend_cnt--) {
 		char* frontid = frontend_names[frontend_cnt];
@@ -303,7 +323,11 @@ int main(int argc, char** argv) {
 			goto fail_fronts_free_name;
 		}
 		handle_signals = handle_signals && !frontdef->handles_signals;
+#ifdef FEATURE_SDL
 		if((err = frontend_alloc(frontdef, &front, fb, &sdl_param))) {
+#else
+		if((err = frontend_alloc(frontdef, &front, fb, NULL))) {
+#endif
 			fprintf(stderr, "Failed to allocate frontend '%s'\n", frontdef->name);
 			goto fail_fronts_free_name;
 		}
@@ -374,22 +398,28 @@ int main(int argc, char** argv) {
 			statistics_get_frames_per_second(&stats), stats.num_connections);
 #endif
 		draw_overlays(fb);
+#ifdef FEATURE_TTF
 		if(txtrndr) {
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height / 20, description, 16);
 #ifdef FEATURE_STATISTICS
 			textrender_draw_string(txtrndr, fb, 100, fb->size.height - fb->size.height / 10, stat_line, 16);
 #endif
 		}
+#endif
 		llist_for_each(&fronts, cursor) {
 			front = llist_entry_get_value(cursor, struct frontend, list);
+#ifdef FEATURE_TTF
 			if(!txtrndr) {
+#endif
 				if(frontend_can_draw_string(front)) {
 					frontend_draw_string(front, 0, 0, description);
 #ifdef FEATURE_STATISTICS
 					frontend_draw_string(front, 0, fb->size.height - fb->size.height / 10, stat_line);
 #endif
 				}
+#ifdef FEATURE_TTF
 			}
+#endif
 			if((err = frontend_update(front))) {
 				fprintf(stderr, "Failed to update frontend '%s', %d => %s, bailing out\n", front->def->name, err, strerror(-err));
 				doshutdown(SIGINT);
@@ -425,9 +455,11 @@ fail:
 	while(frontend_cnt > 0 && frontend_cnt--) {
 		free(frontend_names[frontend_cnt]);
 	}
+#ifdef FEATURE_TTF
 	if(txtrndr) {
 		textrender_free(txtrndr);
 	}
+#endif
 	if(description && description != default_description) {
 		free(description);
 	}

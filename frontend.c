@@ -5,15 +5,23 @@
 
 #include "frontend.h"
 
+#ifdef FEATURE_SDL
 extern struct frontend_def front_sdl;
+#endif
+#ifdef FEATURE_VNC
 extern struct frontend_def front_vnc;
+#endif
 #ifdef FEATURE_STATISTICS
 extern struct frontend_def front_statistics;
 #endif
 
 struct frontend_id frontends[] = {
+#ifdef FEATURE_SDL
 	{ "sdl", &front_sdl },
+#endif
+#ifdef FEATURE_VNC
 	{ "vnc", &front_vnc },
+#endif
 #ifdef FEATURE_STATISTICS
 	{ "statistics", &front_statistics },
 #endif

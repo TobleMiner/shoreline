@@ -1,4 +1,3 @@
-#ifdef FEATURE_STATISTICS
 #include <errno.h>
 #include <netdb.h>
 #include <stdio.h>
@@ -332,5 +331,3 @@ static const struct frontend_arg fargs[] = {
 };
 
 DECLARE_FRONTEND_SIG_ARGS(front_statistics, "Statistics API provider frontend", &fops, fargs);
-
-#endif
