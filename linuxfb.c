@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -41,6 +42,17 @@ static int linuxfb_start(struct frontend* front) {
 		err = -errno;
 		goto fail;
 	}
+
+	if((err = ioctl(fd, FBIOGET_VSCREENINFO, &linuxfb->vscreen) < 0)) {
+		fprintf(stderr, "Failed to get var screeninfo: %s(%d)\n", strerror(errno), errno);
+		err = -errno;
+		goto fail_fd;
+	}
+
+	printf("vscreen offsets:\n");
+	printf("  red:   %u.%u\n", linuxfb->vscreen.red.offset, linuxfb->vscreen.red.length);
+	printf("  green: %u.%u\n", linuxfb->vscreen.green.offset, linuxfb->vscreen.green.length);
+	printf("  blue:  %u.%u\n", linuxfb->vscreen.blue.offset, linuxfb->vscreen.blue.length);
 
 	fbmem = calloc(2, linuxfb->fb->size.width * linuxfb->fb->size.height);
 	if(!fbmem) {

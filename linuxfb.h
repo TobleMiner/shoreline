@@ -10,6 +10,7 @@ struct linuxfb {
 	char* fbdev;
 	int fd;
 	char* fbmem;
+	struct fb_var_screeninfo vscreen;
 };
 
 #endif
