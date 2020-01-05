@@ -24,7 +24,7 @@ DECLARE_FRONTEND_SIG_ARGS(front_vnc, "VNC server frontend", &fops, fargs);
 
 static void set_shared(struct vnc* vnc, bool shared) {
 	vnc->server->alwaysShared = shared ? TRUE : FALSE;
-	vnc->server->neverShared = shared ? FALSE  : TRUE;
+	vnc->server->neverShared = shared ? FALSE : TRUE;
 }
 
 static void pre_display_cb(struct _rfbClientRec* client) {
