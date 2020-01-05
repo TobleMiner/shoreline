@@ -73,8 +73,8 @@ int linuxfb_update(struct frontend* front) {
 		for(x = 0; x < linuxfb->fb->size.width; x++) {
 			px = fb_get_pixel(linuxfb->fb, x, y);
 			// 16 bit -> 565
-			linuxfb->fbmem[px_index++] = (px.color.color_bgr.blue >> 3) | ((px.color.color_bgr.green & 0x03) << 5);
-			linuxfb->fbmem[px_index++] = (px.color.color_bgr.green & 0x01) | ((px.color.color_bgr.red >> 3) << 1);
+			linuxfb->fbmem[px_index++] = (px.color.color_bgr.red >> 3) | ((px.color.color_bgr.green & 0x03) << 5);
+			linuxfb->fbmem[px_index++] = (px.color.color_bgr.green & 0x01) | ((px.color.color_bgr.blue >> 3) << 1);
 		}
 	}
 
