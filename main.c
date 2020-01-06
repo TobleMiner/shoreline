@@ -153,7 +153,7 @@ void draw_overlays(struct fb* fb) {
 #ifdef FEATURE_STATISTICS
 	char stat_line[MAX_STAT_LENGTH];
 	snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels "
-"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %lu connections",
+"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %llu connections",
 		statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
 		statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
 		statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),
@@ -390,7 +390,7 @@ int main(int argc, char** argv) {
 #ifdef FEATURE_STATISTICS
 		statistics_update(&stats, net);
 		snprintf(stat_line, sizeof(stat_line), "Traffic: %.3f %sB / %.3f %sPixels "
-"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %lu connections",
+"Throughput: %.3f %sb/s / %.3f %sPixels/s FPS: %d frames/s %llu connections",
 			statistics_traffic_get_scaled(&stats), statistics_traffic_get_unit(&stats),
 			statistics_pixels_get_scaled(&stats), statistics_pixels_get_unit(&stats),
 			statistics_throughput_get_scaled(&stats), statistics_throughput_get_unit(&stats),

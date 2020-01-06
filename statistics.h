@@ -11,15 +11,15 @@ struct statistics;
 #define STATISTICS_NUM_AVERAGES 20
 
 struct statistics {
-	uint64_t num_bytes;
-	uint64_t num_pixels;
-	uint64_t num_connections;
+	unsigned long long num_bytes;
+	unsigned long long num_pixels;
+	unsigned long long num_connections;
 	int average_index;
-	uint64_t bytes_per_second[STATISTICS_NUM_AVERAGES];
-	uint64_t pixels_per_second[STATISTICS_NUM_AVERAGES];
-	uint64_t frames_per_second[STATISTICS_NUM_AVERAGES];
-	uint64_t last_num_frames;
-	uint64_t num_frames;
+	unsigned long long bytes_per_second[STATISTICS_NUM_AVERAGES];
+	unsigned long long pixels_per_second[STATISTICS_NUM_AVERAGES];
+	unsigned long long frames_per_second[STATISTICS_NUM_AVERAGES];
+	unsigned long long last_num_frames;
+	unsigned long long num_frames;
 	struct timespec last_update;
 };
 

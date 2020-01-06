@@ -24,10 +24,10 @@ static const char* UNITS[] = {
 void statistics_update(struct statistics* stats, struct net* net) {
 	int i = net->num_threads;
 	struct timespec now;
-	uint64_t bytes_prev = stats->num_bytes;
-	uint64_t num_connections = 0;
+	unsigned long long bytes_prev = stats->num_bytes;
+	unsigned long long num_connections = 0;
 #ifdef FEATURE_PIXEL_COUNT
-	uint64_t pixels_prev = stats->num_pixels;
+	unsigned long long pixels_prev = stats->num_pixels;
 	struct llist_entry* cursor;
 #endif
 
@@ -84,7 +84,7 @@ void statistics_update(struct statistics* stats, struct net* net) {
 	} while(0)
 
 #define DEFINE_UNIT(base) \
-	static const char* value_get_unit_##base(uint64_t value) { \
+	static const char* value_get_unit_##base(unsigned long long value) { \
 		int i = 0; \
 		while(value > base) { \
 			if(i == ARRAY_LEN(UNITS) - 1) { \
@@ -95,7 +95,7 @@ void statistics_update(struct statistics* stats, struct net* net) {
 		} \
 		return UNITS[i]; \
 	} \
-	static double value_get_scaled_##base(uint64_t value) { \
+	static double value_get_scaled_##base(unsigned long long value) { \
 		double val = value; \
 		int i = 0; \
 		while(val > base) { \
@@ -120,13 +120,13 @@ double statistics_traffic_get_scaled(struct statistics* stats) {
 }
 
 const char* statistics_throughput_get_unit(struct statistics* stats) {
-	uint64_t bytes_per_second;
+	unsigned long long bytes_per_second;
 	GET_AVERAGE(bytes_per_second, stats, bytes_per_second);
 	return value_get_unit_1000(bytes_per_second * 8ULL);
 }
 
 double statistics_throughput_get_scaled(struct statistics* stats) {
-	uint64_t bytes_per_second;
+	unsigned long long bytes_per_second;
 	GET_AVERAGE(bytes_per_second, stats, bytes_per_second);
 	return value_get_scaled_1000(bytes_per_second * 8ULL);
 }
@@ -140,13 +140,13 @@ double statistics_pixels_get_scaled(struct statistics* stats) {
 }
 
 const char* statistics_pps_get_unit(struct statistics* stats) {
-	uint64_t pixels_per_second;
+	unsigned long long pixels_per_second;
 	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
 	return value_get_unit_1000(pixels_per_second);
 }
 
 double statistics_pps_get_scaled(struct statistics* stats) {
-	uint64_t pixels_per_second;
+	unsigned long long pixels_per_second;
 	GET_AVERAGE(pixels_per_second, stats, pixels_per_second);
 	return value_get_scaled_1000(pixels_per_second);
 }
@@ -176,9 +176,9 @@ static int statistics_frontend_alloc(struct frontend** ret, struct fb* fb, void*
 static void* api_thread(void* args) {
 	struct statistics_frontend* sfront = args;
 	char strbuf[API_STRBUF_LEN];
-	uint64_t bytes_per_second;
-	uint64_t pixels_per_second;
-	uint64_t frames_per_second;
+	unsigned long long bytes_per_second;
+	unsigned long long pixels_per_second;
+	unsigned long long frames_per_second;
 
 	while(!sfront->exit) {
 		size_t len;
@@ -194,7 +194,8 @@ static void* api_thread(void* args) {
 		GET_AVERAGE(pixels_per_second, &sfront->stats, pixels_per_second);
 		GET_AVERAGE(frames_per_second, &sfront->stats, frames_per_second);
 
-		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %lu, \"pixels\": %lu }, \"throughput\": { \"bytes\": %lu, \"pixels\": %lu }, \"connections\": %lu, \"fps\": %lu }\n",
+		len = snprintf(strbuf, sizeof(strbuf), "{ \"traffic\": { \"bytes\": %llu, \"pixels\": %llu }, "
+"\"throughput\": { \"bytes\": %llu, \"pixels\": %llu }, \"connections\": %llu, \"fps\": %llu }\n",
 			sfront->stats.num_bytes, sfront->stats.num_pixels,
 			bytes_per_second, pixels_per_second,
 			sfront->stats.num_connections,
