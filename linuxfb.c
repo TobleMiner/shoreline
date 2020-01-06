@@ -11,11 +11,6 @@
 #include "linuxfb.h"
 #include "util.h"
 
-// Required fore some incredibly broken framebuffer drivers
-#ifndef FBDEV_PIXEL_OFFSET
-#define FBDEV_PIXEL_OFFSET 0
-#endif
-
 char* default_fbdev = "/dev/fb0";
 
 int linuxfb_alloc(struct frontend** ret, struct fb* fb, void* priv) {
@@ -80,7 +75,7 @@ fail_depth:
 	printf("  green: %u.%u\n", linuxfb->vscreen.green.offset, linuxfb->vscreen.green.length);
 	printf("  blue:  %u.%u\n", linuxfb->vscreen.blue.offset, linuxfb->vscreen.blue.length);
 
-	fbmem = calloc(linuxfb->vscreen.bits_per_pixel / 8, linuxfb->vscreen.xres_virtual * linuxfb->vscreen.yres_virtual + FBDEV_PIXEL_OFFSET);
+	fbmem = calloc(linuxfb->vscreen.bits_per_pixel / 8, linuxfb->vscreen.xres_virtual * linuxfb->vscreen.yres_virtual + linuxfb->pixel_offset);
 	if(!fbmem) {
 		fprintf(stderr, "Failed to allocate buffer for fb color format, out of memory\n");
 		err = -ENOMEM;
@@ -106,7 +101,7 @@ int linuxfb_update(struct frontend* front) {
 	size_t len;
 	char* fbmem;
 	// Convert fb data to fbdev format
-	unsigned int px_index = FBDEV_PIXEL_OFFSET;
+	unsigned int px_index = linuxfb->pixel_offset;
 	px_index += linuxfb->vscreen.yoffset * linuxfb->vscreen.xres_virtual;
 	for(y = 0; y < min(linuxfb->fb->size.height, linuxfb->vscreen.yres); y++) {
 		px_index += linuxfb->vscreen.xoffset * (linuxfb->vscreen.bits_per_pixel / 8);
@@ -130,6 +125,7 @@ int linuxfb_update(struct frontend* front) {
 					break;
 				default:
 					fprintf(stderr, "Invalid pixel format %u. This should not happen!\n", linuxfb->vscreen.bits_per_pixel);
+					return -EINVAL;
 			}
 		}
 		px_index += (linuxfb->vscreen.xres_virtual - x) * (linuxfb->vscreen.bits_per_pixel / 8);
@@ -170,6 +166,18 @@ fail:
 	return err;
 }
 
+static int configure_offset(struct frontend* front, char* value) {
+	struct linuxfb* linuxfb = container_of(front, struct linuxfb, front);
+	int offset = atoi(value);
+	if(offset < 0) {
+		fprintf(stderr, "Offset mut be positive\n");
+		return -EINVAL;
+	}
+
+	linuxfb->pixel_offset = offset;
+	return 0;
+}
+
 void linuxfb_free(struct frontend* front) {
 	struct linuxfb* linuxfb = container_of(front, struct linuxfb, front);
 	if(linuxfb->fbdev != default_fbdev) {
@@ -190,6 +198,7 @@ static const struct frontend_ops fops = {
 
 static const struct frontend_arg fargs[] = {
 	{ .name = "fb", .configure = configure_fbdev },
+	{ .name = "offset", .configure = configure_offset },
 	{ .name = "", .configure = NULL },
 };
 

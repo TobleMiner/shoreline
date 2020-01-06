@@ -11,6 +11,7 @@ struct linuxfb {
 	int fd;
 	char* fbmem;
 	struct fb_var_screeninfo vscreen;
+	unsigned int pixel_offset;
 };
 
 #endif
