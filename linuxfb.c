@@ -9,6 +9,12 @@
 #include <linux/fb.h>
 
 #include "linuxfb.h"
+#include "util.h"
+
+// Required fore some incredibly broken framebuffer drivers
+#ifndef FBDEV_PIXEL_OFFSET
+#define FBDEV_PIXEL_OFFSET 0
+#endif
 
 char* default_fbdev = "/dev/fb0";
 
@@ -49,14 +55,34 @@ static int linuxfb_start(struct frontend* front) {
 		goto fail_fd;
 	}
 
+	switch(linuxfb->vscreen.bits_per_pixel) {
+		case 8:
+			if(linuxfb->vscreen.grayscale != 1) {
+				goto fail_depth;
+			}
+			break;
+		case 16:
+		case 24:
+		case 32:
+			if(linuxfb->vscreen.grayscale != 0) {
+				goto fail_depth;
+			}
+			break;
+		default:
+fail_depth:
+			fprintf(stderr, "Unsupported bitdepth %u (%s) on fbdev\n", linuxfb->vscreen.bits_per_pixel,
+			        linuxfb->vscreen.grayscale == 0 ? "color" : linuxfb->vscreen.grayscale == 1 ? "grayscale" : "fourcc");
+			goto fail_fd;
+	}
+
 	printf("vscreen offsets:\n");
 	printf("  red:   %u.%u\n", linuxfb->vscreen.red.offset, linuxfb->vscreen.red.length);
 	printf("  green: %u.%u\n", linuxfb->vscreen.green.offset, linuxfb->vscreen.green.length);
 	printf("  blue:  %u.%u\n", linuxfb->vscreen.blue.offset, linuxfb->vscreen.blue.length);
 
-	fbmem = calloc(2, linuxfb->fb->size.width * linuxfb->fb->size.height);
+	fbmem = calloc(linuxfb->vscreen.bits_per_pixel / 8, linuxfb->vscreen.xres_virtual * linuxfb->vscreen.yres_virtual + FBDEV_PIXEL_OFFSET);
 	if(!fbmem) {
-		fprintf(stderr, "Failed to allocate buffer for fb target format, out of memory\n");
+		fprintf(stderr, "Failed to allocate buffer for fb color format, out of memory\n");
 		err = -ENOMEM;
 		goto fail_fd;
 	}
@@ -80,18 +106,37 @@ int linuxfb_update(struct frontend* front) {
 	size_t len;
 	char* fbmem;
 	// Convert fb data to fbdev format
-	unsigned int px_index = 0;
-	for(y = 0; y < linuxfb->fb->size.height; y++) {
-		for(x = 0; x < linuxfb->fb->size.width; x++) {
+	unsigned int px_index = FBDEV_PIXEL_OFFSET;
+	px_index += linuxfb->vscreen.yoffset * linuxfb->vscreen.xres_virtual;
+	for(y = 0; y < min(linuxfb->fb->size.height, linuxfb->vscreen.yres); y++) {
+		px_index += linuxfb->vscreen.xoffset * (linuxfb->vscreen.bits_per_pixel / 8);
+		for(x = 0; x < min(linuxfb->fb->size.width, linuxfb->vscreen.xres); x++) {
 			px = fb_get_pixel(linuxfb->fb, x, y);
-			// 16 bit -> 565
-			linuxfb->fbmem[px_index++] = (px.color.color_bgr.blue >> 3) | (((px.color.color_bgr.green >> 2) & 0x07) << 5);
-			linuxfb->fbmem[px_index++] = (((px.color.color_bgr.green >> 2) & 0x38) >> 3) | (px.color.color_bgr.red & 0xF8);
+			switch(linuxfb->vscreen.bits_per_pixel) {
+				case 16: // BGR 565
+					linuxfb->fbmem[px_index++] = (px.color.color_bgr.blue >> 3) | (((px.color.color_bgr.green >> 2) & 0x07) << 5);
+					linuxfb->fbmem[px_index++] = (((px.color.color_bgr.green >> 2) & 0x38) >> 3) | (px.color.color_bgr.red & 0xF8);
+					break;
+				case 32: // ABGR 8888
+					linuxfb->fbmem[px_index++] = px.color.alpha;
+				case 24: // BGR 888
+					linuxfb->fbmem[px_index++] = px.color.color_bgr.blue;
+					linuxfb->fbmem[px_index++] = px.color.color_bgr.green;
+					linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					break;
+				case 8: // 8 bit grayscale
+					// interprete red channel only. While this is not correct it is at least something
+					linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					break;
+				default:
+					fprintf(stderr, "Invalid pixel format %u. This should not happen!\n", linuxfb->vscreen.bits_per_pixel);
+			}
 		}
+		px_index += (linuxfb->vscreen.xres_virtual - x) * (linuxfb->vscreen.bits_per_pixel / 8);
 	}
 
 	fbmem = linuxfb->fbmem;
-	len = linuxfb->fb->size.width * linuxfb->fb->size.height * 2;
+	len = linuxfb->vscreen.bits_per_pixel / 8 * linuxfb->vscreen.xres_virtual * linuxfb->vscreen.yres_virtual;
 	lseek(linuxfb->fd, 0, SEEK_SET);
 	while(len > 0) {
 		if((write_len = write(linuxfb->fd, fbmem, len)) < 0) {
