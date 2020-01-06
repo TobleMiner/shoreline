@@ -39,7 +39,7 @@ CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 
 DEPS = $(filter $(FEATURE_DEPS),$(foreach feature,$(FEATURES),$(DEPS_$(feature))))
 DEPFLAGS_CC =
-DEPFLAGS_LD = -lpthread $(FEATURE_DEPFLAGS)
+DEPFLAGS_LD = -lpthread $(filter $(FEATURE_DEPFLAGS),$(foreach feature,$(FEATURES),$(DEPFLAGS_$(feature))))
 ifneq ($(DEPS),)
 DEPFLAGS_CC += `pkg-config --cflags $(DEPS)`
 DEPFLAGS_LD += `pkg-config --libs $(DEPS)`
