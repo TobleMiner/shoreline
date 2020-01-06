@@ -2,7 +2,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
-#include <assert.h>
 #include <string.h>
 
 #include "util.h"
@@ -91,14 +90,6 @@ void fb_clear_rect(struct fb* fb, unsigned int x, unsigned int y, unsigned int w
 		pix += x;
 		memset(pix, 0, sizeof(union fb_pixel) * max(0, min(width, (int)fb->size.width - (int)x)));
 	}
-}
-
-// It might be a good idea to offer a variant returning a pointer to avoid unnecessary copies
-union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
-	assert(x < fb->size.width);
-	assert(y < fb->size.height);
-
-	return fb->pixels[y * fb->size.width + x];
 }
 
 static void fb_set_size(struct fb* fb, unsigned int width, unsigned int height) {
