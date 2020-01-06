@@ -21,12 +21,13 @@ HEADER_STATISTICS = statistics.h
 SOURCE_FBDEV = linuxfb.c
 HEADER_FBDEV = linuxfb.h
 
-DEPS_NUMA = numa
+DEPFLAGS_NUMA = -lnuma
 
 CODE_FEATURES = STATISTICS SDL NUMA VNC TTF FBDEV
 FEATURE_SOURCES = $(foreach feature,$(CODE_FEATURES),$(SOURCE_$(feature)))
 FEATURE_HEADERS = $(foreach feature,$(CODE_FEATURES),$(HEADER_$(feature)))
 FEATURE_DEPS = $(foreach feature,$(CODE_FEATURES),$(DEPS_$(feature)))
+FEATURE_DEPFLAGS = $(foreach feature,$(CODE_FEATURES),$(DEPFLAGS_$(feature)))
 
 CCFLAGS = -Wall -D_GNU_SOURCE
 ifeq ($(DEBUG),1)
@@ -38,7 +39,7 @@ CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 
 DEPS = $(filter $(FEATURE_DEPS),$(foreach feature,$(FEATURES),$(DEPS_$(feature))))
 DEPFLAGS_CC =
-DEPFLAGS_LD = -lpthread
+DEPFLAGS_LD = -lpthread $(FEATURE_DEPFLAGS)
 ifneq ($(DEPS),)
 DEPFLAGS_CC += `pkg-config --cflags $(DEPS)`
 DEPFLAGS_LD += `pkg-config --libs $(DEPS)`
