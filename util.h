@@ -1,6 +1,8 @@
 #ifndef _SHORELINE_UTIL_H_
 #define _SHORELINE_UTIL_H_
 
+#include <endian.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <time.h>
@@ -41,6 +43,10 @@ inline unsigned get_numa_node() {
 
 inline long long int get_timespec_diff(struct timespec* a, struct timespec* b) {
 	return (a->tv_sec - b->tv_sec) * 1000000000LL + (a->tv_nsec - b->tv_nsec);
+}
+
+inline bool is_big_endian() {
+	return htobe32(0x11223344) == 0x11223344;
 }
 
 #endif

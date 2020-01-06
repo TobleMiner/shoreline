@@ -26,6 +26,17 @@ union fb_pixel {
 			unsigned char bgr[3];
 		};
 	} color;
+	struct {
+		union {
+			struct {
+				uint8_t red;
+				uint8_t green;
+				uint8_t blue;
+			} color_bgr;
+			unsigned char bgr[3];
+		};
+		uint8_t alpha;
+	} color_be;
 	uint32_t abgr;
 };
 

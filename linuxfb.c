@@ -100,8 +100,9 @@ int linuxfb_update(struct frontend* front) {
 	ssize_t write_len;
 	size_t len;
 	char* fbmem;
-	// Convert fb data to fbdev format
 	unsigned int px_index = linuxfb->pixel_offset;
+	bool is_be = is_big_endian();
+
 	px_index += linuxfb->vscreen.yoffset * linuxfb->vscreen.xres_virtual;
 	for(y = 0; y < min(linuxfb->fb->size.height, linuxfb->vscreen.yres); y++) {
 		px_index += linuxfb->vscreen.xoffset * (linuxfb->vscreen.bits_per_pixel / 8);
@@ -109,19 +110,38 @@ int linuxfb_update(struct frontend* front) {
 			px = fb_get_pixel(linuxfb->fb, x, y);
 			switch(linuxfb->vscreen.bits_per_pixel) {
 				case 16: // BGR 565
-					linuxfb->fbmem[px_index++] = (px.color.color_bgr.blue >> 3) | (((px.color.color_bgr.green >> 2) & 0x07) << 5);
-					linuxfb->fbmem[px_index++] = (((px.color.color_bgr.green >> 2) & 0x38) >> 3) | (px.color.color_bgr.red & 0xF8);
+					if(is_be) {
+						linuxfb->fbmem[px_index++] = (px.color_be.color_bgr.blue >> 3) | (((px.color_be.color_bgr.green >> 2) & 0x07) << 5);
+						linuxfb->fbmem[px_index++] = (((px.color_be.color_bgr.green >> 2) & 0x38) >> 3) | (px.color_be.color_bgr.red & 0xF8);
+					} else {
+						linuxfb->fbmem[px_index++] = (px.color.color_bgr.blue >> 3) | (((px.color.color_bgr.green >> 2) & 0x07) << 5);
+						linuxfb->fbmem[px_index++] = (((px.color.color_bgr.green >> 2) & 0x38) >> 3) | (px.color.color_bgr.red & 0xF8);
+					}
 					break;
 				case 32: // ABGR 8888
-					linuxfb->fbmem[px_index++] = px.color.alpha;
+					if(is_be) {
+						linuxfb->fbmem[px_index++] = px.color_be.alpha;
+					} else {
+						linuxfb->fbmem[px_index++] = px.color.alpha;
+					}
 				case 24: // BGR 888
-					linuxfb->fbmem[px_index++] = px.color.color_bgr.blue;
-					linuxfb->fbmem[px_index++] = px.color.color_bgr.green;
-					linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					if(is_be) {
+						linuxfb->fbmem[px_index++] = px.color_be.color_bgr.blue;
+						linuxfb->fbmem[px_index++] = px.color_be.color_bgr.green;
+						linuxfb->fbmem[px_index++] = px.color_be.color_bgr.red;
+					} else {
+						linuxfb->fbmem[px_index++] = px.color.color_bgr.blue;
+						linuxfb->fbmem[px_index++] = px.color.color_bgr.green;
+						linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					}
 					break;
 				case 8: // 8 bit grayscale
 					// interprete red channel only. While this is not correct it is at least something
-					linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					if(is_be) {
+						linuxfb->fbmem[px_index++] = px.color_be.color_bgr.red;
+					} else {
+						linuxfb->fbmem[px_index++] = px.color.color_bgr.red;
+					}
 					break;
 				default:
 					fprintf(stderr, "Invalid pixel format %u. This should not happen!\n", linuxfb->vscreen.bits_per_pixel);
