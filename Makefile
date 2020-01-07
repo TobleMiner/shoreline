@@ -11,7 +11,7 @@ SOURCE_SDL = sdl.c
 HEADER_SDL = sdl.h
 DEPS_SDL = sdl2
 CCFLAGS_sdl2 = -I/usr/include/SDL2 -D_REENTRANT
-LDFLAGS_sdl2 = SDL2
+LDFLAGS_sdl2 = -lSDL2
 
 SOURCE_VNC = vnc.c
 HEADER_VNC = vnc.h
@@ -53,14 +53,14 @@ DEPS = $(filter $(FEATURE_DEPS),$(foreach feature,$(FEATURES),$(DEPS_$(feature))
 # Try fetching linker flags from pkg-config, use static ones on failure
 DEPFLAGS_CC += $(foreach feature,$(FEATURES),\
 	$(foreach dep,$(DEPS_$(feature)),\
-		$(shell pkg-config --cflags $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying $(CCFLAGS_$(dep)) && echo "-l$(CCFLAGS_$(dep))") ))))
+		$(shell pkg-config --cflags $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying $(CCFLAGS_$(dep)) && echo "$(CCFLAGS_$(dep))") ))))
 
 # Build dependency linker flags
 DEPFLAGS_LD = -lpthread
 # Try fetching linker flags from pkg-config, use static ones on failure
 DEPFLAGS_LD += $(foreach feature,$(FEATURES),\
 	$(foreach dep,$(DEPS_$(feature)),\
-		$(shell pkg-config --libs $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying -l$(LDFLAGS_$(dep)) && echo "-l$(LDFLAGS_$(dep))") ))))
+		$(shell pkg-config --libs $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying $(LDFLAGS_$(dep)) && echo "$(LDFLAGS_$(dep))") ))))
 
 # Select source files
 FEATURE_SOURCE = $(foreach feature,$(FEATURES),$(SOURCE_$feature))
