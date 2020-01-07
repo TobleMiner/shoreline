@@ -51,12 +51,16 @@ CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 DEPFLAGS_CC =
 DEPS = $(filter $(FEATURE_DEPS),$(foreach feature,$(FEATURES),$(DEPS_$(feature))))
 # Try fetching linker flags from pkg-config, use static ones on failure
-DEPFLAGS_CC += $(foreach feature,$(FEATURES),$(foreach dep,$(DEPS_$(feature)),$(shell pkg-config --cflags $(dep) || (1>&2 echo Missing pkg-config file for $(dep), trying $(CCFLAGS_$(dep)) && echo "-l$(CCFLAGS_$(dep))" ))))
+DEPFLAGS_CC += $(foreach feature,$(FEATURES),\
+	$(foreach dep,$(DEPS_$(feature)),\
+		$(shell pkg-config --cflags $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying $(CCFLAGS_$(dep)) && echo "-l$(CCFLAGS_$(dep))") ))))
 
 # Build dependency linker flags
 DEPFLAGS_LD = -lpthread
 # Try fetching linker flags from pkg-config, use static ones on failure
-DEPFLAGS_LD += $(foreach feature,$(FEATURES),$(foreach dep,$(DEPS_$(feature)),$(shell pkg-config --libs $(dep) || (1>&2 echo Missing pkg-config file for $(dep), trying -l$(LDFLAGS_$(dep)) && echo "-l$(LDFLAGS_$(dep))" ))))
+DEPFLAGS_LD += $(foreach feature,$(FEATURES),\
+	$(foreach dep,$(DEPS_$(feature)),\
+		$(shell pkg-config --libs $(dep) || ((1>&2 echo Missing pkg-config file for $(dep), trying -l$(LDFLAGS_$(dep)) && echo "-l$(LDFLAGS_$(dep))") ))))
 
 # Select source files
 FEATURE_SOURCE = $(foreach feature,$(FEATURES),$(SOURCE_$feature))
