@@ -40,8 +40,8 @@ FEATURE_DEPS = $(foreach feature,$(CODE_FEATURES),$(DEPS_$(feature)))
 
 # Set default compile flags
 CCFLAGS = -Wall -D_GNU_SOURCE
-ifeq ($(DEBUG),1)
-	CCFLAGS += -O1 -ggdb
+ifneq ($(DEBUG),)
+	CCFLAGS += -O1 -ggdb -DDEBUG=$(DEBUG)
 else
 	CCFLAGS += -Ofast -march=native
 endif
