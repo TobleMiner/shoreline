@@ -272,7 +272,7 @@ static void* net_connection_thread(void* args) {
 	} else {
 		CPU_ZERO(&nodemask);
 		CPU_SET(cpuid, &nodemask);
-		if((err = pthread_setaffinity_np(thread->thread, sizeof(nodemask), &nodemask))) {
+		if((err = pthread_setaffinity_np(pthread_self(), sizeof(nodemask), &nodemask))) {
 			fprintf(stderr, "Failed to set cpu affinity, continuing without affinity setting: %s (%d)\n", strerror(err), err);
 		}
 	}
