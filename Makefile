@@ -1,5 +1,6 @@
 CC ?= gcc
 RM = rm -f
+RMDIR = rm -rf
 
 # Default: Enable all features that do not impact performance
 FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT
@@ -33,7 +34,11 @@ HEADER_FBDEV = linuxfb.h
 DEPS_NUMA = numa
 LDFLAGS_numa = -lnuma
 
-# Create lists of features components
+# Sanitize features
+FEATURES := $(sort $(FEATURES))
+BUILD_DIR = build/$(subst $() $(),-,$(FEATURES))
+
+# Create lists of FEATURES components
 FEATURE_SOURCES = $(foreach feature,$(CODE_FEATURES),$(SOURCE_$(feature)))
 FEATURE_HEADERS = $(foreach feature,$(CODE_FEATURES),$(HEADER_$(feature)))
 FEATURE_DEPS = $(foreach feature,$(CODE_FEATURES),$(DEPS_$(feature)))
@@ -42,6 +47,7 @@ FEATURE_DEPS = $(foreach feature,$(CODE_FEATURES),$(DEPS_$(feature)))
 CCFLAGS = -Wall -D_GNU_SOURCE
 ifneq ($(DEBUG),)
 	CCFLAGS += -O1 -ggdb -DDEBUG=$(DEBUG)
+	BUILD_DIR := $(BUILD_DIR)-$(DEBUG)
 else
 	CCFLAGS += -Ofast -march=native
 endif
@@ -66,20 +72,23 @@ DEPFLAGS_LD += $(foreach feature,$(FEATURES),\
 FEATURE_SOURCE = $(foreach feature,$(FEATURES),$(SOURCE_$feature))
 SOURCE = $(filter-out $(FEATURE_SOURCES),$(wildcard *.c))
 SOURCE += $(foreach feature,$(FEATURES),$(SOURCE_$(feature)))
-OBJS = $(patsubst %.c,%.o,$(SOURCE))
+OBJS = $(patsubst %.c,$(BUILD_DIR)/%.o,$(SOURCE))
 HDRS = $(filter-out $(FEATURE_HEADERS),$(wildcard *.h))
 HDRS += $(foreach feature,$(FEATURES),$(HEADER_$(feature)))
 
 all: shoreline
 
-%.o : %.c $(HDRS) Makefile
+$(BUILD_DIR)/%.o : %.c $(HDRS) Makefile | $(BUILD_DIR)
 	$(CC) -c $(CCFLAGS) $(DEPFLAGS_CC) $< -o $@
 
 shoreline: $(OBJS)
 	$(CC) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
 
+$(BUILD_DIR):
+	mkdir -p $(BUILD_DIR)
+
 clean:
-	$(RM) $(OBJS)
+	$(RMDIR) build
 	$(RM) shoreline
 
 .PHONY: all clean
