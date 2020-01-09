@@ -27,6 +27,14 @@
 #define SCRATCH_STR_MAX 32
 #define WHITESPACE_SEARCH_GARBAGE_THRESHOLD 32
 
+#if DEBUG > 1
+#define debug_printf(...) printf(__VA_ARGS__)
+#define debug_fprintf(s, ...) fprintf(s, __VA_ARGS__)
+#else
+#define debug_printf(...)
+#define debug_fprintf(...)
+#endif
+
 /* Theory Of Operation
  * ===================
  *
@@ -305,7 +313,6 @@ static void* net_connection_thread(void* args) {
 	pthread_cleanup_push(net_connection_thread_cleanup_ring, thread);
 recv:
 	while(net->state != NET_STATE_SHUTDOWN) {
-		// FIXME: If data is badly aligned we might have very small reads every second read or so
 		read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
 		if(read_len <= 0) {
 			if(read_len < 0) {
@@ -317,7 +324,7 @@ recv:
 #ifdef FEATURE_STATISTICS
 		thread->byte_count += read_len;
 #endif
-//		printf("Read %zd bytes\n", read_len);
+		debug_printf("Read %zd bytes\n", read_len);
 		ring_advance_write(ring, read_len);
 
 		while(ring_any_available(ring)) {
@@ -325,25 +332,25 @@ recv:
 
 			if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
 				if((err = net_skip_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No whitespace after PX cmd\n");
+					debug_fprintf(stderr, "No whitespace after PX cmd\n");
 					goto recv_more;
 				}
 				if((offset = net_next_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No more whitespace found, missing X\n");
+					debug_fprintf(stderr, "No more whitespace found, missing X\n");
 					goto recv_more;
 				}
 				x = net_str_to_uint32_10(ring, offset);
 				if((err = net_skip_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No whitespace after X coordinate\n");
+					debug_fprintf(stderr, "No whitespace after X coordinate\n");
 					goto recv_more;
 				}
 				if((offset = net_next_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No more whitespace found, missing Y\n");
+					debug_fprintf(stderr, "No more whitespace found, missing Y\n");
 					goto recv_more;
 				}
 				y = net_str_to_uint32_10(ring, offset);
 				if((err = net_skip_whitespace(ring)) < 0) {
-//					fprintf(stderr, "No whitespace after Y coordinate\n");
+					debug_fprintf(stderr, "No whitespace after Y coordinate\n");
 					goto recv_more;
 				}
 				x += thread->offset.x;
@@ -360,7 +367,7 @@ recv:
 				} else {
 					// Set pixel
 					if((offset = net_next_whitespace(ring)) < 0) {
-//						fprintf(stderr, "No more whitespace found, missing color\n");
+						debug_fprintf(stderr, "No more whitespace found, missing color\n");
 						goto recv_more;
 					}
 					if(offset > 6) {
@@ -369,7 +376,9 @@ recv:
 						pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
 						pixel.color.alpha = 0xFF;
 					}
-//					printf("Got pixel command: PX %u %u %06x\n", x, y, pixel.rgba);
+					debug_printf("Got pixel command: PX %u %u %02x%02x%02x%02x\n", x, y,
+					             pixel.color.color_bgr.red, pixel.color.color_bgr.green,
+					             pixel.color.color_bgr.blue, pixel.color.alpha);
 					if(x < fbsize->width && y < fbsize->height) {
 #ifdef FEATURE_STATISTICS
 #ifdef FEATURE_PIXEL_COUNT
@@ -378,7 +387,7 @@ recv:
 #endif
 						fb_set_pixel(fb, x, y, &pixel);
 					} else {
-//						printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
+						debug_printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 					}
 				}
 			}
@@ -412,7 +421,7 @@ recv:
 #endif
 			else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
-					printf("Encountered unknown command\n");
+					debug_printf("Encountered unknown command\n");
 					ring_advance_read(ring, offset);
 				} else {
 					if(offset == -EINVAL) {
