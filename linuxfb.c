@@ -97,7 +97,7 @@ int linuxfb_update(struct frontend* front) {
 	struct linuxfb* linuxfb = container_of(front, struct linuxfb, front);
 	union fb_pixel px;
 	unsigned int x, y;
-	ssize_t write_len;
+	ssize_t write_len = 0;
 	size_t len;
 	char* fbmem;
 	unsigned int px_index = linuxfb->pixel_offset;
