@@ -57,7 +57,13 @@ SIZE                         # Get size of drawing surface
 OFFSET <x> <y>               # Apply offset (x,y) to all further pixel draws on this connection
 ```
 
-## Statistics API
+## Statistics
+
+To enable on-screen statistics display shoreline needs to be passed a TTF (other formats supported by libfreetype2 will work, too) font via the `-t` option.
+
+When running a system with a graphical frontend chances are you do have some TTF fonts in `/usr/share/fonts/TTF/`.
+
+### Statistics API
 
 There is a special frontend called `statistics`. When enabled it serves a simple TCP based statistics API (default port 1235). Upon
 connecting to the statistics API it dumps a JSON object and closes the connection.
