@@ -68,7 +68,7 @@ When running a system with a graphical frontend chances are you do have some TTF
 There is a special frontend called `statistics`. When enabled it serves a simple TCP based statistics API (default port 1235). Upon
 connecting to the statistics API it dumps a JSON object and closes the connection.
 
-This is an example json object returned by the API:
+This is an example JSON object returned by the API:
 
 ```
 {
@@ -93,7 +93,7 @@ running shoreline with fancy monitoring and colorful statistics a breeze:
 
 For optimum performance shoreline should be run on a host separate from the Docker
 host. Trying to run shoreline inside a Docker container might impact performance
-severely depending on your Hardware and Docker configuration.
+severely depending on your hardware and Docker configuration.
 
 # Troubleshooting
 
