@@ -85,6 +85,16 @@ This is an example json object returned by the API:
 }
 ```
 
+## Container setup
+
+The awesome Sebastian Bernauer built a Docker based environment that makes
+running shoreline with fancy monitoring and colorful statistics a breeze:
+[pixelflut-infrastructure](https://github.com/sbernauer/pixelflut-infrastructure)
+
+For optimum performance shoreline should be run on a host separate from the Docker
+host. Trying to run shoreline inside a Docker container might impact performance
+severely depending on your Hardware and Docker configuration.
+
 # Troubleshooting
 
 When using shoreline with a lot of clients default resource limits applied to processes may not be sufficient.
