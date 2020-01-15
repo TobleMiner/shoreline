@@ -226,6 +226,7 @@ static int statistics_frontend_start(struct frontend* front) {
 	struct sockaddr_storage* listen_addr;
 
 	if((err = -getaddrinfo(sfront->listen_address, sfront->listen_port, NULL, &addr_list))) {
+		fprintf(stderr, "Failed to resolve listen address for statistics '%s', %d => %s\n", sfront->listen_address, err, gai_strerror(-err));
 		goto fail;
 	}
 	sfront->addr_list = addr_list;
