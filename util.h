@@ -34,11 +34,15 @@
 #define ARRAY_LEN(arr) (sizeof((arr)) / sizeof(*(arr)))
 
 static inline unsigned get_numa_node() {
+#ifdef SYS_getcpu
 	unsigned numa_node;
 	if(syscall(SYS_getcpu, NULL, &numa_node, NULL) == -1) {
 		numa_node = 0;
 	}
 	return numa_node;
+#else
+	return 0;
+#endif
 }
 
 static inline long long int get_timespec_diff(struct timespec* a, struct timespec* b) {
