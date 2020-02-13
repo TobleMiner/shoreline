@@ -582,7 +582,7 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storag
 	// Setup pthreads (using net->num_threads as a counter might come back to bite me)
 	for(net->num_threads = 0; net->num_threads < num_threads; net->num_threads++) {
 #ifndef FEATURE_BROKEN_PTHREAD
-	char threadname[THREAD_NAME_MAX];
+		char threadname[THREAD_NAME_MAX];
 #endif
 		err = -pthread_create(&net->threads[net->num_threads].thread, NULL, net_listen_thread, &net->threads[net->num_threads].threadargs);
 		if(err) {
