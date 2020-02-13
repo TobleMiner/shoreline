@@ -1,6 +1,7 @@
 CC ?= gcc
 RM = rm -f
 INCLUDE_DIR ?= /usr/include
+OPTFLAGS ?= -Ofast -march=native
 
 # Default: Enable all features that do not impact performance
 FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT BROKEN_PTHREAD
@@ -44,7 +45,7 @@ CCFLAGS = -Wall -D_GNU_SOURCE
 ifneq ($(DEBUG),)
 	CCFLAGS += -O1 -ggdb -DDEBUG=$(DEBUG)
 else
-	CCFLAGS += -Ofast -march=native
+	CCFLAGS += $(OPTFLAGS)
 endif
 CCFLAGS += $(foreach feature,$(FEATURES),-DFEATURE_$(feature))
 
