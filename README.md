@@ -17,6 +17,11 @@ On \*buntu/Debian distros use `sudo apt install git build-essential libsdl2-dev 
 
 Use ```make``` to build shoreline
 
+Optionally the following environment variables can be set to control how shoreline is built:
+
+* INCLUDE_DIR: Allows to select an include dir other than /usr/include
+* OPTFLAGS: Allows to set the optimization flags used for this build
+* FEATURES: Allows to select what features shoreline will be built with
 
 # Usage
 
