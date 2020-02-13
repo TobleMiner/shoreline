@@ -67,7 +67,7 @@ int fb_resize(struct fb* fb, unsigned int width, unsigned int height);
 int fb_coalesce(struct fb* fb, struct llist* fbs);
 void fb_copy(struct fb* dst, struct fb* src);
 
-inline union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
+static inline union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y) {
 	assert(x < fb->size.width);
 	assert(y < fb->size.height);
 
@@ -76,11 +76,11 @@ inline union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigned int y
 
 
 // Info
-inline struct fb_size* fb_get_size(struct fb* fb) {
+static inline struct fb_size* fb_get_size(struct fb* fb) {
 	return &fb->size;
 }
 
-inline union fb_pixel* fb_get_line_base(struct fb* fb, unsigned int line) {
+static inline union fb_pixel* fb_get_line_base(struct fb* fb, unsigned int line) {
 	return &fb->pixels[fb->size.width * line];
 }
 

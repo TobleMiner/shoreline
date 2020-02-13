@@ -28,17 +28,17 @@ void ring_advance_write(struct ring* ring, off_t offset);
 int ring_memcmp(struct ring*, char* ref, unsigned int len, char** next_pos);
 
 // Optimized inline funnctions
-inline bool ring_any_available(struct ring* ring) {
+static inline bool ring_any_available(struct ring* ring) {
 	return ring->ptr_read != ring->ptr_write;
 }
 
 // Take a small peek into the buffer
-inline char ring_peek_one(struct ring* ring) {
+static inline char ring_peek_one(struct ring* ring) {
 	return *ring->ptr_read;
 }
 
 // Peek previous byte
-inline char ring_peek_prev(struct ring* ring) {
+static inline char ring_peek_prev(struct ring* ring) {
 	if(ring->ptr_read - 1 < ring->data) {
 		return *(ring->data + ring->size - 1);
 	}
@@ -46,7 +46,7 @@ inline char ring_peek_prev(struct ring* ring) {
 }
 
 // Pointer to next byte to read from ringbuffer
-inline char* ring_next(struct ring* ring, char* ptr) {
+static inline char* ring_next(struct ring* ring, char* ptr) {
 	if(ptr < ring->data + ring->size - 1) {
 		return ptr + 1;
 	}
@@ -54,13 +54,13 @@ inline char* ring_next(struct ring* ring, char* ptr) {
 }
 
 // Read one byte from the buffer
-inline char ring_read_one(struct ring* ring) {
+static inline char ring_read_one(struct ring* ring) {
 	char c = *ring->ptr_read;
 	ring->ptr_read = ring_next(ring, ring->ptr_read);
 	return c;
 }
 
-inline void ring_inc_read(struct ring* ring) {
+static inline void ring_inc_read(struct ring* ring) {
 	ring->ptr_read = ring_next(ring, ring->ptr_read);
 }
 
