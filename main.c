@@ -420,10 +420,12 @@ int main(int argc, char** argv) {
 #ifdef FEATURE_TTF
 			}
 #endif
-			if((err = frontend_update(front))) {
-				fprintf(stderr, "Failed to update frontend '%s', %d => %s, bailing out\n", front->def->name, err, strerror(-err));
-				doshutdown(SIGINT);
-				break;
+			if(frontend_can_update(front)) {
+				if((err = frontend_update(front))) {
+					fprintf(stderr, "Failed to update frontend '%s', %d => %s, bailing out\n", front->def->name, err, strerror(-err));
+					doshutdown(SIGINT);
+					break;
+				}
 			}
 		}
 #ifdef FEATURE_STATISTICS

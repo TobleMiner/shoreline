@@ -67,6 +67,7 @@ struct frontend_def {
 #define frontend_can_configure(front) (!!(front)->def->args)
 #define frontend_can_start(front) (!!(front)->def->ops->start)
 #define frontend_can_draw_string(front) (!!(front)->def->ops->draw_string)
+#define frontend_can_update(front) (!!(front)->def->ops->update)
 
 struct frontend {
 	struct frontend_def* def;
