@@ -17,6 +17,9 @@ extern struct frontend_def front_statistics;
 #ifdef FEATURE_FBDEV
 extern struct frontend_def front_linuxfb;
 #endif
+#ifdef FEATURE_SIMPLE_RFB
+extern struct frontend_def front_simple_rfb;
+#endif
 
 struct frontend_id frontends[] = {
 #ifdef FEATURE_SDL
@@ -30,6 +33,9 @@ struct frontend_id frontends[] = {
 #endif
 #ifdef FEATURE_FBDEV
 	{ "fbdev", &front_linuxfb },
+#endif
+#ifdef FEATURE_SIMPLE_RFB
+	{ "simple_rfb", &front_simple_rfb },
 #endif
 	{ NULL, NULL }
 };
