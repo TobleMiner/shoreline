@@ -273,6 +273,7 @@ static void* net_connection_thread(void* args) {
 
 	char scratch_str[SCRATCH_STR_MAX];
 
+#ifndef FEATURE_BROKEN_PTHREAD
 	cpu_set_t nodemask;
 	int cpuid = sched_getcpu();
 	if(cpuid < 0) {
@@ -284,6 +285,7 @@ static void* net_connection_thread(void* args) {
 			fprintf(stderr, "Failed to set cpu affinity, continuing without affinity setting: %s (%d)\n", strerror(err), err);
 		}
 	}
+#endif
 
 	pthread_mutex_lock(&net->fb_lock);
 	fb = fb_get_fb_on_node(net->fb_list, numa_node);
@@ -533,7 +535,6 @@ fail:
 
 int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storage* addr, size_t addr_len) {
 	int err = 0, i;
-	char threadname[THREAD_NAME_MAX];
 	char host_tmp[NI_MAXHOST], port_tmp[NI_MAXSERV];
 
 	assert(num_threads > 0);
@@ -580,13 +581,18 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storag
 
 	// Setup pthreads (using net->num_threads as a counter might come back to bite me)
 	for(net->num_threads = 0; net->num_threads < num_threads; net->num_threads++) {
+#ifndef FEATURE_BROKEN_PTHREAD
+	char threadname[THREAD_NAME_MAX];
+#endif
 		err = -pthread_create(&net->threads[net->num_threads].thread, NULL, net_listen_thread, &net->threads[net->num_threads].threadargs);
 		if(err) {
 			fprintf(stderr, "Failed to create pthread %d\n", net->num_threads);
 			goto fail_pthread_create;
 		}
+#ifndef FEATURE_BROKEN_PTHREAD
 		snprintf(threadname, THREAD_NAME_MAX, "network %d", net->num_threads);
 		pthread_setname_np(net->threads[net->num_threads].thread, threadname);
+#endif
 	}
 
 	return 0;

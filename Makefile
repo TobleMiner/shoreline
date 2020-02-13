@@ -3,7 +3,7 @@ RM = rm -f
 INCLUDE_DIR ?= /usr/include
 
 # Default: Enable all features that do not impact performance
-FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT
+FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT BROKEN_PTHREAD
 
 # Declare features compiled conditionally
 CODE_FEATURES = STATISTICS SDL NUMA VNC TTF FBDEV
