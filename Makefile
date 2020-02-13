@@ -1,5 +1,6 @@
 CC ?= gcc
 RM = rm -f
+INCLUDE_DIR ?= /usr/include
 
 # Default: Enable all features that do not impact performance
 FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT
@@ -10,7 +11,7 @@ CODE_FEATURES = STATISTICS SDL NUMA VNC TTF FBDEV
 SOURCE_SDL = sdl.c
 HEADER_SDL = sdl.h
 DEPS_SDL = sdl2
-CCFLAGS_sdl2 = -I/usr/include/SDL2 -D_REENTRANT
+CCFLAGS_sdl2 = -I$(INCLUDE_DIR)SDL2 -D_REENTRANT
 LDFLAGS_sdl2 = -lSDL2
 
 SOURCE_VNC = vnc.c
@@ -21,7 +22,7 @@ LDFLAGS_libvncserver = -lvncserver
 SOURCE_TTF = textrender.c
 HEADER_TTF = textrender.h
 DEPS_TTF = freetype2
-CCFLAGS_freetype2 = -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/harfbuzz -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
+CCFLAGS_freetype2 = -I$(INCLUDE_DIR)freetype2 -I$(INCLUDE_DIR)libpng16 -I$(INCLUDE_DIR)harfbuzz -I$(INCLUDE_DIR)glib-2.0 -I/usr/lib/glib-2.0/include
 LDFLAGS_freetype2 = -lfreetype
 
 SOURCE_STATISTICS = statistics.c
