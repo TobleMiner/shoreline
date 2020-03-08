@@ -28,6 +28,9 @@
 #ifdef FEATURE_STATISTICS
 #include "statistics.h"
 #endif
+#ifdef FEATURE_PINGXELFLUT
+#include "network_pingxelflut.h"
+#endif
 
 
 #define PORT_DEFAULT "1234"
@@ -380,6 +383,11 @@ int main(int argc, char** argv) {
 		fprintf(stderr, "Failed to start listening: %d => %s\n", err, strerror(-err));
 		goto fail_addrinfo;
 	}
+
+#ifdef FEATURE_PINGXELFLUT
+	//TODO
+	net_pingxelflut_alloc(NULL, fb, &fb_list, &fb->size);
+#endif
 
 	nice(-20);
 	while(!do_exit) {

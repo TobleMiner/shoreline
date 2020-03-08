@@ -4,10 +4,10 @@ INCLUDE_DIR ?= /usr/include
 OPTFLAGS ?= -Ofast -march=native
 
 # Default: Enable all features that do not impact performance
-FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT BROKEN_PTHREAD
+FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV PINGXELFLUT #PIXEL_COUNT BROKEN_PTHREAD
 
 # Declare features compiled conditionally
-CODE_FEATURES = STATISTICS SDL NUMA VNC TTF FBDEV
+CODE_FEATURES = STATISTICS SDL NUMA VNC TTF FBDEV PINGXELFLUT
 
 SOURCE_SDL = sdl.c
 HEADER_SDL = sdl.h
@@ -31,6 +31,9 @@ HEADER_STATISTICS = statistics.h
 
 SOURCE_FBDEV = linuxfb.c
 HEADER_FBDEV = linuxfb.h
+
+SOURCE_PINGXELFLUT = network_pingxelflut.c
+HEADER_PINGXELFLUT = network_pingxelflut.h
 
 DEPS_NUMA = numa
 LDFLAGS_numa = -lnuma
