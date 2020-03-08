@@ -16,8 +16,7 @@
 #include <sched.h>
 #include <stdarg.h>
 
-#include "network.h"
-#include "ring.h"
+#include "network_pingxelflut.h"
 #include "framebuffer.h"
 #include "llist.h"
 #include "util.h"
@@ -35,20 +34,37 @@
 #define debug_fprintf(...)
 #endif
 
-int net_pingxelflut_alloc(struct net** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size) {
-	// *((int*)0) = 42; // SEGFAULT
+int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size) {
+	int err = 0;
+	struct net_pingxelflut* net = calloc(1, sizeof(struct net_pingxelflut));
+	if(!net) {
+		err = -ENOMEM;
+		goto fail;
+	}
+
+	net->fb = fb;
+	net->fb_list = fb_list;
+	net->fb_size = fb_size;
+
+	// TODO Lookup bpf_map and store it at net->map
+
+	*network = net;
+
 	return 0;
+
+fail:
+	return err;
 }
 
-void net_pingxelflut_free(struct net* net) {
+void net_pingxelflut_free(struct net_pingxelflut* net) {
 
 }
 
-void net_pingxelflut_shutdown(struct net* net) {
+void net_pingxelflut_shutdown(struct net_pingxelflut* net) {
 
 }
 
-int net_pingxelflut_listen(struct net* net) {
+int net_pingxelflut_listen(struct net_pingxelflut* net) {
 
 	return 0;
 }

@@ -180,6 +180,9 @@ int main(int argc, char** argv) {
 	struct sockaddr_storage* inaddr;
 	struct addrinfo* addr_list;
 	struct net* net;
+#ifdef FEATURE_PINGXELFLUT
+	struct net_pingxelflut* net_pingxelflut;
+#endif
 	struct llist fronts;
 	struct llist_entry* cursor, *next;
 	struct frontend* front;
@@ -386,7 +389,7 @@ int main(int argc, char** argv) {
 
 #ifdef FEATURE_PINGXELFLUT
 	//TODO
-	net_pingxelflut_alloc(NULL, fb, &fb_list, &fb->size);
+	net_pingxelflut_alloc(&net_pingxelflut, fb, &fb_list, &fb->size);
 #endif
 
 	nice(-20);
