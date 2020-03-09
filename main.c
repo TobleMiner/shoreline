@@ -388,7 +388,7 @@ int main(int argc, char** argv) {
 	}
 
 #ifdef FEATURE_PINGXELFLUT
-	//TODO
+	//TODO Add error handling
 	net_pingxelflut_alloc(&net_pingxelflut, fb, &fb_list, &fb->size);
 	net_pingxelflut_listen(net_pingxelflut);
 #endif
@@ -449,6 +449,9 @@ int main(int argc, char** argv) {
 		}
 	}
 	net_shutdown(net);
+#ifdef FEATURE_PINGXELFLUT
+	net_pingxelflut_shutdown(net_pingxelflut);
+#endif
 
 	fb_free_all(&fb_list);
 fail_addrinfo:

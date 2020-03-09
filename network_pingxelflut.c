@@ -36,13 +36,10 @@
 #define debug_fprintf(...)
 #endif
 
-#define MAP_FILENAME "/sys/fs/bpf/xdp/globals/xdp_pixelflut"
+#define MAP_FILENAME "/sys/fs/bpf/xdp/globals/pingxelflut_framebuffer"
 
-// // TODO
-// // FIXME
-// int bpf_obj_get(char* foo) {
-// 	return -1;
-// }
+
+static bool do_exit = false;
 
 int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size) {
 	int err = 0;
@@ -71,16 +68,20 @@ fail:
 }
 
 void net_pingxelflut_free(struct net_pingxelflut* net) {
-
+	// TODO Close map_fd?
 }
 
 void net_pingxelflut_shutdown(struct net_pingxelflut* net) {
-
+	do_exit = true;
 }
 
 int net_pingxelflut_listen(struct net_pingxelflut* net) {
-	for (int i = 0; i < net->fb_size->width; i++) {
-		fb_set_pixel_rgb(net->fb, i, 10, 0xff, 0x00, 0x00);
+	while (!do_exit) {
+		// TOOD Do some kind of memcp from mmaped map to framebuffer
+		for (int i = 0; i < net->fb_size->width; i++) {
+			fb_set_pixel_rgb(net->fb, i, 10, 0xff, 0x00, 0x00);
+		}
+		sleep(1);
 	}
 	return 0;
 }
