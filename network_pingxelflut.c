@@ -16,7 +16,6 @@
 #include <sched.h>
 #include <stdarg.h>
 
-#include <linux/unistd.h>
 #include <linux/bpf.h>
 
 #include "network_pingxelflut.h"
@@ -39,6 +38,12 @@
 
 #define MAP_FILENAME "/sys/fs/bpf/xdp/globals/xdp_pixelflut"
 
+// // TODO
+// // FIXME
+// int bpf_obj_get(char* foo) {
+// 	return -1;
+// }
+
 int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size) {
 	int err = 0;
 	struct net_pingxelflut* net = calloc(1, sizeof(struct net_pingxelflut));
@@ -51,6 +56,11 @@ int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struc
 	net->fb_list = fb_list;
 	net->fb_size = fb_size;
 	net->map_fd = bpf_obj_get(MAP_FILENAME);
+	if (net->map_fd) {
+		printf("Cannot open map at %s. Check, that you run this program as root and the ebpf kernel is running.\n", MAP_FILENAME);
+		err = -ENOENT;
+		goto fail;
+	}
 
 	*network = net;
 
