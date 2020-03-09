@@ -388,7 +388,7 @@ int main(int argc, char** argv) {
 	}
 
 #ifdef FEATURE_PINGXELFLUT
-	//TODO Add error handling
+	// TODO Add error handling
 	net_pingxelflut_alloc(&net_pingxelflut, fb, &fb_list, &fb->size);
 	net_pingxelflut_listen(net_pingxelflut);
 #endif
@@ -458,6 +458,9 @@ fail_addrinfo:
 	freeaddrinfo(addr_list);
 fail_net:
 	net_free(net);
+#ifdef FEATURE_PINGXELFLUT
+	net_pingxelflut_free(net_pingxelflut);
+#endif
 fail_fronts:
 	llist_for_each_safe(&fronts, cursor, next) {
 		front = llist_entry_get_value(cursor, struct frontend, list);
