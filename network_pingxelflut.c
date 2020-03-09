@@ -16,6 +16,9 @@
 #include <sched.h>
 #include <stdarg.h>
 
+#include <linux/unistd.h>
+#include <linux/bpf.h>
+
 #include "network_pingxelflut.h"
 #include "framebuffer.h"
 #include "llist.h"
@@ -34,6 +37,8 @@
 #define debug_fprintf(...)
 #endif
 
+#define MAP_FILENAME "/sys/fs/bpf/xdp/globals/xdp_pixelflut"
+
 int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struct llist* fb_list, struct fb_size* fb_size) {
 	int err = 0;
 	struct net_pingxelflut* net = calloc(1, sizeof(struct net_pingxelflut));
@@ -45,8 +50,7 @@ int net_pingxelflut_alloc(struct net_pingxelflut** network, struct fb* fb, struc
 	net->fb = fb;
 	net->fb_list = fb_list;
 	net->fb_size = fb_size;
-
-	// TODO Lookup bpf_map and store it at net->map
+	net->map_fd = bpf_obj_get(MAP_FILENAME);
 
 	*network = net;
 
@@ -65,6 +69,8 @@ void net_pingxelflut_shutdown(struct net_pingxelflut* net) {
 }
 
 int net_pingxelflut_listen(struct net_pingxelflut* net) {
-
+	for (int i = 0; i < net->fb_size->width; i++) {
+		fb_set_pixel_rgb(net->fb, i, 10, 0xff, 0x00, 0x00);
+	}
 	return 0;
 }

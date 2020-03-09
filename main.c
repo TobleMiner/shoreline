@@ -390,6 +390,7 @@ int main(int argc, char** argv) {
 #ifdef FEATURE_PINGXELFLUT
 	//TODO
 	net_pingxelflut_alloc(&net_pingxelflut, fb, &fb_list, &fb->size);
+	net_pingxelflut_listen(net_pingxelflut);
 #endif
 
 	nice(-20);

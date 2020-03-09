@@ -5,7 +5,6 @@
 #include <pthread.h>
 #include <sys/socket.h>
 #include <stdbool.h>
-#include <linux/bpf.h>
 
 struct net_pingxelflut;
 
@@ -21,7 +20,7 @@ struct net_pingxelflut {
 	pthread_mutex_t fb_lock;
 	struct llist* fb_list;
 
-	struct bpf_map *map;
+	int map_fd;
 };
 
 #define likely(x)	__builtin_expect((x),1)
