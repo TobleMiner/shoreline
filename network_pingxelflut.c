@@ -16,7 +16,7 @@
 #include <sched.h>
 #include <stdarg.h>
 
-#include <linux/bpf.h>
+#include <bpf/bpf.h>
 
 #include "network_pingxelflut.h"
 #include "framebuffer.h"

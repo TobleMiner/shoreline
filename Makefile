@@ -34,6 +34,8 @@ HEADER_FBDEV = linuxfb.h
 
 SOURCE_PINGXELFLUT = network_pingxelflut.c
 HEADER_PINGXELFLUT = network_pingxelflut.h
+DEPS_PINGXELFLUT = libbpf
+LDFLAGS_libbpf = -lbpf
 
 DEPS_NUMA = numa
 LDFLAGS_numa = -lnuma
