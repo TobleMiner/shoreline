@@ -136,6 +136,10 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 ```
 
+## CPU Vulnerability mitigations
+
+You can get better performance if you add `mitigations=off` to your cmdline (on Debian edit `/etc/default/grub`, run `update-grub` and reboot).
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
