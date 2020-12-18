@@ -136,6 +136,13 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 ```
 
+# IP-Based Rate-Limiting
+
+In order to rate-limit every IP to 10 established connections, you can simply use iptables:
+
+`iptables -A INPUT -p tcp -m tcp --dport 1234 --tcp-flags FIN,SYN,RST,ACK SYN -m connlimit --connlimit-above 10 --connlimit-mask 32 --connlimit-saddr -j REJECT --reject-with icmp-port-unreachable`
+`ip6tables -A INPUT -p tcp -m tcp --dport 1234 --tcp-flags FIN,SYN,RST,ACK SYN -m connlimit --connlimit-above 10 --connlimit-mask 128 --connlimit-saddr -j REJECT --reject-with icmp6-port-unreachable`
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
