@@ -136,6 +136,13 @@ LimitNOFILE=infinity
 LimitNPROC=infinity
 ```
 
+## Hardware vulnerability mitigations
+
+Over the past years an ever-growing set of mitigations for hardware vulnerabilities have been added to Linux. If you are only
+running trusted code on your system you might want to add `mitigations=off` to your kernel cmdline. This can result in a
+considerable performance increase. On Debian this change can by persisted by adding `mitigations=off` to GRUB_CMDLINE_LINUX in
+`/etc/default/grub` and running `update-grub`.
+
 # Performance
 
 Shoreline can easily handle full 10G line speed traffic on half way decent hardware (i7-6700, 32 GB dual channel DDR4 memory @2400 MHz)
