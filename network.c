@@ -566,7 +566,11 @@ int net_listen(struct net* net, unsigned int num_threads, struct sockaddr_storag
 		goto fail_socket;
 	}
 
-	printf("Listening on %s:%s\n", host_tmp, port_tmp);
+	if (addr->ss_family == AF_INET6) {
+		printf("Listening on [%s]:%s\n", host_tmp, port_tmp);
+	} else {
+		printf("Listening on %s:%s\n", host_tmp, port_tmp);
+	}
 
 	// Allocate space for threads
 	net->threads = calloc(num_threads, sizeof(struct net_thread));
