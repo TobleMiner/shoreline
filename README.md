@@ -143,6 +143,12 @@ running trusted code on your system you might want to add `mitigations=off` to y
 considerable performance increase. On Debian this change can by persisted by adding `mitigations=off` to GRUB_CMDLINE_LINUX in
 `/etc/default/grub` and running `update-grub`.
 
+## Reliability
+
+Misbehaving VNC clients can occasionally trigger assertions in the VNC server library. When running shoreline with the VNC frontend
+exposed to arbitrary clients, adding a VNC multiplexer like [VNCmux](https://github.com/TobleMiner/vncmux/) can improve reliability of
+shoreline considerably.
+
 # IP-Based Rate-Limiting
 
 In order to rate-limit every IP to 10 established connections, you can simply use iptables:
@@ -158,3 +164,7 @@ On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 ECC memory @2666 MHz, 6 m
 
 These results were obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
 
+## VNC
+
+With many VNC clients performance can degrade. Running a VNC multiplexer like [VNCmux](https://github.com/TobleMiner/vncmux/), even on the same host,
+can improve performance drastically.
