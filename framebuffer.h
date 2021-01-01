@@ -60,7 +60,15 @@ void fb_free_all(struct llist* fbs);
 struct fb* fb_get_fb_on_node(struct llist* fbs, unsigned numa_node);
 
 // Manipulation
-void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel);
+static inline void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
+	union fb_pixel* target;
+	assert(x < fb->size.width);
+	assert(y < fb->size.height);
+
+	target = &(fb->pixels[y * fb->size.width + x]);
+	*target = *pixel;
+}
+
 void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red, uint8_t green, uint8_t blue);
 void fb_clear_rect(struct fb* fb, unsigned int x, unsigned int y, unsigned int width, unsigned int height);
 int fb_resize(struct fb* fb, unsigned int width, unsigned int height);

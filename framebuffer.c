@@ -61,15 +61,6 @@ void fb_free_all(struct llist* fbs) {
 	}
 }
 
-void fb_set_pixel(struct fb* fb, unsigned int x, unsigned int y, union fb_pixel* pixel) {
-	union fb_pixel* target;
-	assert(x < fb->size.width);
-	assert(y < fb->size.height);
-
-	target = &(fb->pixels[y * fb->size.width + x]);
-	memcpy(target, pixel, sizeof(*pixel));
-}
-
 void fb_set_pixel_rgb(struct fb* fb, unsigned int x, unsigned int y, uint8_t red, uint8_t green, uint8_t blue) {
 	union fb_pixel* target;
 	assert(x < fb->size.width);
