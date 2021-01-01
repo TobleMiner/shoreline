@@ -360,8 +360,8 @@ recv:
 				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
 					// Get pixel
 					if(x < fbsize->width && y < fbsize->height) {
-						if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "PX %u %u %08x\n",
-							x, y, fb_get_pixel(net->fb, x, y).abgr)) < 0) {
+						if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
+							x, y, fb_get_pixel(net->fb, x, y).abgr >> 8)) < 0) {
 							fprintf(stderr, "Failed to write out pixel value: %d => %s\n", err, strerror(-err));
 							goto fail_ring;
 						}
