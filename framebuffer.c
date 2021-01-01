@@ -4,7 +4,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include "util.h"
 #include "framebuffer.h"
 
 int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
