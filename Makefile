@@ -1,7 +1,7 @@
 CC ?= gcc
 RM = rm -f
 INCLUDE_DIR ?= /usr/include
-OPTFLAGS ?= -Ofast -march=native
+OPTFLAGS ?= -Ofast -march=native -flto
 
 # Default: Enable all features that do not impact performance
 FEATURES ?= SIZE OFFSET STATISTICS SDL NUMA VNC TTF FBDEV #PIXEL_COUNT BROKEN_PTHREAD ALPHA_BLENDING
