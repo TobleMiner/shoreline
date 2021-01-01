@@ -185,7 +185,7 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 		// Could be replaced by a left shift
 		val *= 16;
 		c = ring_read_one(ring);
-		lower = tolower(c);
+		lower = c | 0x20;
 		if(lower >= 'a') {
 			val += lower - 'a' + 10;
 		} else {
