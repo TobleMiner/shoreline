@@ -21,7 +21,7 @@ Optionally the following environment variables can be set to control how shoreli
 
 * INCLUDE_DIR: Allows to select an include dir other than /usr/include
 * OPTFLAGS: Allows to set the optimization flags used for this build
-* FEATURES: Allows to select what features shoreline will be built with
+* FEATURES: Allows to select what features shoreline will be built with (see Makefile for available features)
 
 # Usage
 
@@ -61,6 +61,12 @@ PX <x> <y>                   # Get pixel @(x,y) as hex
 SIZE                         # Get size of drawing surface
 OFFSET <x> <y>               # Apply offset (x,y) to all further pixel draws on this connection
 ```
+
+## Alpha blending
+
+By default alpha blending is disabled. This might cause images that contain transparency to be displayed incorrectly. You can enable alpha blending
+at compile time by adding `ALPHA_BLENDING` to the `FEATURES` environment variable. However, be warned this will have a large impact on performance
+since each pixel drawn turns into a memory read, modify, write instead of just a memory write.
 
 ## Statistics
 
