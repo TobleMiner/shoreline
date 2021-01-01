@@ -136,13 +136,20 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 			return -EINVAL;
 		}
 		for(j = 0; j < fb_size; j++) {
-			// This type of transparency handling is crap. We should do proper coalescing
 			if(other->pixels[j].color.alpha == 0) {
 				continue;
 			}
+#ifdef FEATURE_ALPHA_BLENDING
+			if(other->pixels[j].color.alpha == 0xff) {
+				fb->pixels[j] = other->pixels[j];
+			} else {
+				FB_ALPHA_BLEND_PIXEL(fb->pixels[j], other->pixels[j], fb->pixels[j]);
+			}
+#else
 			fb->pixels[j] = other->pixels[j];
-			// Reset to fully transparent
 			other->pixels[j].color.alpha = 0;
+#endif
+			// Reset to fully transparent
 		}
 	}
 	return 0;

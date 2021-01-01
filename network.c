@@ -391,7 +391,7 @@ recv:
 #ifdef FEATURE_ALPHA_BLENDING
 						if (pixel.color.alpha != 0xFF) {
 							union fb_pixel old_pixel = fb_get_pixel(fb, x, y);
-							FB_ALPHA_BLEND_PIXEL(pixel, old_pixel);
+							FB_ALPHA_BLEND_PIXEL(pixel, pixel, old_pixel);
 						}
 #endif
 						fb_set_pixel(fb, x, y, &pixel);

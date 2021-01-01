@@ -83,17 +83,32 @@ static inline union fb_pixel fb_get_pixel(struct fb* fb, unsigned int x, unsigne
 	return fb->pixels[y * fb->size.width + x];
 }
 
-#define FB_ALPHA_BLEND_PIXEL(newpx, oldpx) do { \
+#define FB_ALPHA_BLEND_CHANNEL(oldc, newc, olda, newa, outa) \
+	(((uint32_t)(newc) * (newa) + (uint32_t)(oldc) * (olda) * (0xff - (newa)) / 255) / (outa))
+
+#define FB_ALPHA_BLEND_PIXEL(outpx, newpx, oldpx) do { \
 	if (is_big_endian()) { \
-		newpx.color_be.color_bgr.blue = ((uint16_t)newpx.color_be.color_bgr.blue * newpx.color_be.alpha + (uint16_t)oldpx.color_be.color_bgr.blue * (0xff - newpx.color_be.alpha)) / 255; \
-		newpx.color_be.color_bgr.green = ((uint16_t)newpx.color_be.color_bgr.green * newpx.color_be.alpha + (uint16_t)oldpx.color_be.color_bgr.green * (0xff - newpx.color_be.alpha)) / 255; \
-		newpx.color_be.color_bgr.red = ((uint16_t)newpx.color_be.color_bgr.red * newpx.color_be.alpha + (uint16_t)oldpx.color_be.color_bgr.red * (0xff - newpx.color_be.alpha)) / 255; \
-		newpx.color_be.alpha = 0xff; \
+		uint8_t outa = (newpx).color_be.alpha + (oldpx).color_be.alpha * (255 - (newpx).color_be.alpha) / 255; \
+		\
+		if (outa) { \
+			(outpx).color_be.color_bgr.blue = FB_ALPHA_BLEND_CHANNEL((oldpx).color_be.color_bgr.blue, (newpx).color_be.color_bgr.blue, (oldpx).color_be.alpha, (newpx).color_be.alpha, outa); \
+			(outpx).color_be.color_bgr.green = FB_ALPHA_BLEND_CHANNEL((oldpx).color_be.color_bgr.green, (newpx).color_be.color_bgr.green, (oldpx).color_be.alpha, (newpx).color_be.alpha, outa); \
+			(outpx).color_be.color_bgr.red = FB_ALPHA_BLEND_CHANNEL((oldpx).color_be.color_bgr.red, (newpx).color_be.color_bgr.red, (oldpx).color_be.alpha, (newpx).color_be.alpha, outa); \
+		} else { \
+			(outpx).abgr = 0; \
+		} \
+		(outpx).color_be.alpha = outa; \
 	} else { \
-		newpx.color.color_bgr.blue = ((uint16_t)newpx.color.color_bgr.blue * newpx.color.alpha + (uint16_t)oldpx.color.color_bgr.blue * (0xff - newpx.color.alpha)) / 255; \
-		newpx.color.color_bgr.green = ((uint16_t)newpx.color.color_bgr.green * newpx.color.alpha + (uint16_t)oldpx.color.color_bgr.green * (0xff - newpx.color.alpha)) / 255; \
-		newpx.color.color_bgr.red = ((uint16_t)newpx.color.color_bgr.red * newpx.color.alpha + (uint16_t)oldpx.color.color_bgr.red * (0xff - newpx.color.alpha)) / 255; \
-		newpx.color.alpha = 0xff; \
+		uint8_t outa = (newpx).color.alpha + (oldpx).color.alpha * (255 - (newpx).color.alpha) / 255; \
+		\
+		if (outa) { \
+			(outpx).color.color_bgr.blue = FB_ALPHA_BLEND_CHANNEL((oldpx).color.color_bgr.blue, (newpx).color.color_bgr.blue, (oldpx).color.alpha, (newpx).color.alpha, outa); \
+			(outpx).color.color_bgr.green = FB_ALPHA_BLEND_CHANNEL((oldpx).color.color_bgr.green, (newpx).color.color_bgr.green, (oldpx).color.alpha, (newpx).color.alpha, outa); \
+			(outpx).color.color_bgr.red = FB_ALPHA_BLEND_CHANNEL((oldpx).color.color_bgr.red, (newpx).color.color_bgr.red, (oldpx).color.alpha, (newpx).color.alpha, outa); \
+		} else { \
+			(outpx).abgr = 0; \
+		} \
+		(outpx).color.alpha = outa; \
 	} \
 } while (0)
 
