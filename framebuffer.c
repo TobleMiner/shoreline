@@ -157,9 +157,9 @@ int fb_coalesce(struct fb* fb, struct llist* fbs) {
 			}
 #else
 			fb->pixels[j] = other->pixels[j];
-			other->pixels[j].color.alpha = 0;
 #endif
 			// Reset to fully transparent
+			other->pixels[j].color.alpha = 0;
 		}
 	}
 	return 0;
