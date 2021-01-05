@@ -8,6 +8,7 @@
 
 int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 	int err = 0;
+	size_t fb_size;
 
 	struct fb* fb = malloc(sizeof(struct fb));
 	if(!fb) {
@@ -17,11 +18,20 @@ int fb_alloc(struct fb** framebuffer, unsigned int width, unsigned int height) {
 
 	fb->size.width = width;
 	fb->size.height = height;
+	fb_size = width * height;
 
 	fb->pixels = calloc(width * height, sizeof(union fb_pixel));
 	if(!fb->pixels) {
 		err = -ENOMEM;
 		goto fail_fb;
+	}
+
+	while (fb_size--) {
+		if (is_big_endian()) {
+			fb->pixels[fb_size].color_be.alpha = 0xff;
+		} else {
+			fb->pixels[fb_size].color.alpha = 0xff;
+		}
 	}
 
 	fb->numa_node = get_numa_node();
