@@ -75,10 +75,10 @@ HDRS += $(foreach feature,$(FEATURES),$(HEADER_$(feature)))
 all: shoreline
 
 %.o : %.c $(HDRS) Makefile
-	$(CC) -c $(CCFLAGS) $(DEPFLAGS_CC) $< -o $@
+	$(CC) -c $(CPPFLAGS) $(CFLAGS) $(CCFLAGS) $(DEPFLAGS_CC) $< -o $@
 
 shoreline: $(OBJS)
-	$(CC) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
+	$(CC) $(LDFLAGS) $(CFLAGS) $(CCFLAGS) $^ $(DEPFLAGS_LD) -o shoreline
 
 clean:
 	$(RM) $(OBJS)
