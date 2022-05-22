@@ -65,7 +65,7 @@ struct net_connection_thread {
 	} offset;
 	uint32_t byte_count;
 
-	struct ring* ring;
+	void *data;
 };
 
 #define likely(x)	__builtin_expect((x),1)

@@ -30,9 +30,11 @@
 #if DEBUG > 1
 #define debug_printf(...) printf(__VA_ARGS__)
 #define debug_fprintf(s, ...) fprintf(s, __VA_ARGS__)
+#define debug_dump_buffer(...) dump_buffer(__VA_ARGS__)
 #else
 #define debug_printf(...)
 #define debug_fprintf(...)
+#define debug_dump_buffer(...)
 #endif
 
 /* Theory Of Operation
@@ -165,26 +167,40 @@ fail:
 	return err;
 }
 
-static uint32_t net_str_to_uint32_10(struct ring* ring, ssize_t len) {
+static int32_t net_str_to_uint32_10(char **ptr, size_t *max_len) {
 	uint32_t val = 0;
 	int radix;
 	char c;
-	for(radix = 0; radix < len; radix++) {
-		c = ring_read_one(ring);
+	char *cptr = *ptr;
+
+	for(radix = 0; radix < *max_len; radix++) {
+		c = *cptr++;
+		if (c == ' ' || c == '\r' || c == '\n') {
+			(*max_len) -= radix + 1;
+			*ptr = cptr;
+			return val;
+		}
 		val = val * 10 + (c - '0');
 	}
-	return val;
+	return -1;
 }
 
 // Separate implementation to keep performance high
-static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
+static int32_t net_str_to_uint32_16(char **ptr, ssize_t *max_len) {
 	uint32_t val = 0;
 	char c;
+	char *cptr = *ptr;
 	int radix, lower;
-	for(radix = 0; radix < len; radix++) {
+
+	for(radix = 0; radix < *max_len; radix++) {
+		c = *cptr++;
+		if (c == '\n' || c == '\r' || c == '\n') {
+			(*max_len) -= radix + 1;
+			*ptr = cptr;
+			return val;
+		}
 		// Could be replaced by a left shift
 		val *= 16;
-		c = ring_read_one(ring);
 		lower = c | 0x20;
 		if(lower >= 'a') {
 			val += lower - 'a' + 10;
@@ -192,7 +208,8 @@ static uint32_t net_str_to_uint32_16(struct ring* ring, ssize_t len) {
 			val += lower - '0';
 		}
 	}
-	return val;
+
+	return -1;
 }
 
 static ssize_t net_sock_printf(int socket, char* scratch_str, size_t scratch_len, char* fmt, ...) {
@@ -229,7 +246,7 @@ out:
 
 static void net_connection_thread_cleanup_ring(void* args) {
 	struct net_connection_thread* thread = args;
-	ring_free(thread->ring);
+	free(thread->data);
 }
 
 static void net_connection_thread_cleanup_socket(void* args) {
@@ -246,6 +263,32 @@ static void net_connection_thread_cleanup_self(void* args) {
 	free(thread);
 }
 
+static void dump_buffer(void *data, size_t len) {
+	char *data8 = data;
+
+	while (len--) {
+		char c = *data8++;
+
+		if (c == '\r') {
+			fprintf(stderr, "\\r");
+		} else if (c == '\n') {
+			fprintf(stderr, "\\n");
+		} else if (c == '\n') {
+			fprintf(stderr, "\\n");
+		} else if (c >= '0' && c <= '9') {
+			putc(c, stderr);
+		} else if (c >= 'a' && c <= 'z') {
+			putc(c, stderr);
+		} else if (c >= 'A' && c <= 'Z') {
+			putc(c, stderr);
+		} else if (c == ' ') {
+			putc(' ', stderr);
+		} else {
+			putc('?', stderr);
+		}
+	}
+}
+
 static void* net_connection_thread(void* args) {
 	struct net_connection_threadargs* threadargs = args;
 	int err, socket = threadargs->socket;
@@ -257,10 +300,12 @@ static void* net_connection_thread(void* args) {
 	struct fb* fb;
 	struct fb_size* fbsize;
 	union fb_pixel pixel;
-	unsigned int x, y;
+	int x, y;
 
 	off_t offset;
 	ssize_t read_len;
+	size_t leftover_bytes = 0;
+	size_t data_len;
 	char* last_cmd;
 
 	/*
@@ -272,6 +317,9 @@ static void* net_connection_thread(void* args) {
 	struct ring* ring;
 
 	char scratch_str[SCRATCH_STR_MAX];
+	char *read_ptr = thread->data;
+	size_t initial_read_len;
+
 
 #ifndef FEATURE_BROKEN_PTHREAD
 	cpu_set_t nodemask;
@@ -306,16 +354,30 @@ static void* net_connection_thread(void* args) {
 	pthread_cleanup_push(net_connection_thread_cleanup_socket, thread);
 
 
-	if((err = ring_alloc(&ring, net->ring_size))) {
+	thread->data = calloc(net->ring_size, 1);
+	if (!thread->data) {
+		err = -ENOMEM;
 		fprintf(stderr, "Failed to allocate ring buffer, %s\n", strerror(-err));
 		goto fail_socket;
 	}
-	thread->ring = ring;
+	read_ptr = thread->data;
 
 	pthread_cleanup_push(net_connection_thread_cleanup_ring, thread);
 recv:
 	while(net->state != NET_STATE_SHUTDOWN) {
-		read_len = read(socket, ring->ptr_write, ring_free_space_contig(ring));
+		ssize_t max_read_len = net->ring_size - leftover_bytes;
+
+		if (max_read_len <= 0) {
+			err = -EPROTO;
+			fprintf(stderr, "Buffer filled with unparsable content, can't continue\n");
+			dump_buffer(thread->data, leftover_bytes > 64 ? 64 : leftover_bytes);
+			fprintf(stderr, "\n");
+			goto fail_ring;
+		}
+
+		debug_fprintf(stderr, "read(%d, %p, %zu)\n", socket, (char *)thread->data + leftover_bytes, net->ring_size - leftover_bytes);
+		read_len = read(socket, (char *)thread->data + leftover_bytes, net->ring_size - leftover_bytes);
+		debug_fprintf(stderr, "Read len %zd\n", read_len);
 		if(read_len <= 0) {
 			if(read_len < 0) {
 				err = -errno;
@@ -323,42 +385,66 @@ recv:
 			}
 			goto fail_ring;
 		}
+		read_ptr = thread->data;
+		data_len = read_len + leftover_bytes;
 #ifdef FEATURE_STATISTICS
 		thread->byte_count += read_len;
 #endif
-		debug_printf("Read %zd bytes\n", read_len);
-		ring_advance_write(ring, read_len);
+		debug_printf("Read %zd bytes, have %zu bytes\n", read_len, data_len);
 
-		while(ring_any_available(ring)) {
-			last_cmd = ring->ptr_read;
+		while(data_len) {
+			if (data_len < 6) {
+				goto recv_more;
+			} else if(!memcmp(read_ptr, "PX", strlen("PX"))) {
+				char *parse_ptr = read_ptr;
+				ssize_t parse_len = data_len;
 
-			if(!ring_memcmp(ring, "PX", strlen("PX"), NULL)) {
-				if((err = net_skip_whitespace(ring)) < 0) {
-					debug_fprintf(stderr, "No whitespace after PX cmd\n");
+				parse_ptr += 2;
+				parse_len -= 2;
+
+				debug_fprintf(stderr, "Buffer post PX parse:");
+				debug_dump_buffer(parse_ptr, parse_len);
+				debug_fprintf(stderr, "\n");
+				if (*parse_ptr != ' ') {
+					goto drop_word;
+				}
+				parse_ptr++;
+				parse_len--;
+				x = net_str_to_uint32_10(&parse_ptr, &parse_len);
+				if (x < 0) {
+					debug_fprintf(stderr, "No parsable number after PX command\n");
+					if (parse_len > 10) {
+						goto px_parse_end;
+					}
 					goto recv_more;
 				}
-				if((offset = net_next_whitespace(ring)) < 0) {
-					debug_fprintf(stderr, "No more whitespace found, missing X\n");
+				debug_fprintf(stderr, "Buffer post X parse:");
+				debug_dump_buffer(parse_ptr, parse_len);
+				debug_fprintf(stderr, "\n");
+				if (!parse_len) {
 					goto recv_more;
 				}
-				x = net_str_to_uint32_10(ring, offset);
-				if((err = net_skip_whitespace(ring)) < 0) {
-					debug_fprintf(stderr, "No whitespace after X coordinate\n");
+				y = net_str_to_uint32_10(&parse_ptr, &parse_len);
+				if (y < 0) {
+					debug_fprintf(stderr, "No parsable Y coordinate after X coordinate\n");
+					if (parse_len > 10) {
+						goto px_parse_end;
+					}
 					goto recv_more;
 				}
-				if((offset = net_next_whitespace(ring)) < 0) {
-					debug_fprintf(stderr, "No more whitespace found, missing Y\n");
-					goto recv_more;
-				}
-				y = net_str_to_uint32_10(ring, offset);
-				if((err = net_skip_whitespace(ring)) < 0) {
-					debug_fprintf(stderr, "No whitespace after Y coordinate\n");
-					goto recv_more;
-				}
+				debug_fprintf(stderr, "Buffer post Y parse:");
+				debug_dump_buffer(parse_ptr, parse_len);
+				debug_fprintf(stderr, "\n");
 				x += thread->offset.x;
 				y += thread->offset.y;
-				if(unlikely(net_is_newline(ring_peek_prev(ring)))) {
-					// Get pixel
+				if (!parse_len) {
+					goto recv_more;
+				}
+				if (*parse_ptr == '\n' || *parse_ptr == '\r') {
+					while (parse_len > 0 && (*parse_ptr == ' ' || *parse_ptr == '\n' || *parse_ptr == '\r')) {
+						parse_len--;
+						parse_ptr++;
+					}
 					if(x < fbsize->width && y < fbsize->height) {
 						if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "PX %u %u %06x\n",
 							x, y, fb_get_pixel(net->fb, x, y).abgr >> 8)) < 0) {
@@ -367,17 +453,28 @@ recv:
 						}
 					}
 				} else {
-					// Set pixel
-					if((offset = net_next_whitespace(ring)) < 0) {
-						debug_fprintf(stderr, "No more whitespace found, missing color\n");
+					int32_t val;
+
+					parse_ptr++;
+					parse_len--;
+					val = net_str_to_uint32_16(&parse_ptr, &parse_len);
+					if (val < 0) {
+						debug_fprintf(stderr, "No parsable color information\n");
+						if (parse_len > 10) {
+							goto px_parse_end;
+						}
 						goto recv_more;
 					}
+					debug_fprintf(stderr, "Color value: %08x", val);
+					pixel.abgr = val;
+/*
 					if(offset > 6) {
 						pixel.abgr = net_str_to_uint32_16(ring, offset);
 					} else {
 						pixel.abgr = net_str_to_uint32_16(ring, offset) << 8;
 						pixel.color.alpha = 0xFF;
 					}
+*/
 
 					debug_printf("Got pixel command: PX %u %u %02x%02x%02x%02x\n", x, y,
 					             pixel.color.color_bgr.red, pixel.color.color_bgr.green,
@@ -399,7 +496,25 @@ recv:
 						debug_printf("Got pixel outside screen area: %u, %u outside %u, %u\n", x, y, fbsize->width, fbsize->height);
 					}
 				}
+px_parse_end:
+				read_ptr = parse_ptr;
+				data_len = parse_len;
+			} else {
+drop_word:
+				debug_printf("Got unknown command, skipping word\n");
+				while (data_len > 0) {
+					data_len--;
+					if (*read_ptr == ' ' || *read_ptr == '\n' || *read_ptr == '\r') {
+						while (data_len > 0 && (*read_ptr == ' ' || *read_ptr == '\n' || *read_ptr == '\r')) {
+							data_len--;
+							read_ptr++;
+						}
+						break;
+					}
+					read_ptr++;
+				}
 			}
+/*
 #ifdef FEATURE_SIZE
 			else if(!ring_memcmp(ring, "SIZE", strlen("SIZE"), NULL)) {
 				if((err = net_sock_printf(socket, scratch_str, sizeof(scratch_str), "SIZE %u %u\n", fbsize->width, fbsize->height)) < 0) {
@@ -428,6 +543,8 @@ recv:
 				thread->offset.y = y;
 			}
 #endif
+*/
+/*
 			else {
 				if((offset = net_next_whitespace(ring)) >= 0) {
 					debug_printf("Encountered unknown command\n");
@@ -442,6 +559,14 @@ recv:
 			}
 
 			net_skip_whitespace(ring);
+*/
+			while (data_len > 0) {
+				if (*read_ptr != ' ' && *read_ptr != '\n' && *read_ptr != '\r') {
+					break;
+				}
+				read_ptr++;
+				data_len--;
+			}
 		}
 	}
 
@@ -455,7 +580,12 @@ fail:
 	return NULL;
 
 recv_more:
-	ring->ptr_read = last_cmd;
+	leftover_bytes = data_len;
+	debug_fprintf(stderr, "Moving buffer contents:");
+	debug_dump_buffer(read_ptr, leftover_bytes > 64 ? 64 : leftover_bytes);
+	debug_fprintf(stderr, "\n");
+	memmove(thread->data, read_ptr, leftover_bytes);
+//	ring->ptr_read = last_cmd;
 	goto recv;
 }
 
