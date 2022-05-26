@@ -359,7 +359,7 @@ static void* net_connection_thread(void* args) {
 	struct ring* ring;
 
 	char scratch_str[SCRATCH_STR_MAX];
-	char *read_ptr = thread->data;
+	register char *read_ptr = thread->data;
 	size_t initial_read_len;
 
 
@@ -407,7 +407,7 @@ static void* net_connection_thread(void* args) {
 	pthread_cleanup_push(net_connection_thread_cleanup_ring, thread);
 recv:
 	while(net->state != NET_STATE_SHUTDOWN) {
-		ssize_t max_read_len = net->ring_size - leftover_bytes;
+		register ssize_t max_read_len = net->ring_size - leftover_bytes;
 
 		if (max_read_len <= 0) {
 			err = -EPROTO;
@@ -438,8 +438,8 @@ recv:
 			if (data_len < 6) {
 				goto recv_more;
 			} else if(!memcmp(read_ptr, "PX", strlen("PX"))) {
-				char *parse_ptr = read_ptr;
-				ssize_t parse_len = data_len;
+				register char *parse_ptr = read_ptr;
+				register ssize_t parse_len = data_len;
 
 				parse_ptr += 2;
 				parse_len -= 2;
