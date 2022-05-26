@@ -170,6 +170,10 @@ On more beefy hardware (2x AMD EPYC 7821, 10x 8GB DDR4 ECC memory @2666 MHz, 6 m
 
 These results were obtained using [Sturmflut](https://github.com/TobleMiner/sturmflut) as a client
 
+With the latest in high end AMD64 CPUs (2x AMD EPYC Milan 7763, 24x 64GB DDR4 ECC memory @3200MHz CL22-22-22, 16 memory channels) an overall throughput of around 600 Gbit/s can be reached.
+Due to lack of fast enough NICs this has only been tested with shoreline and sturmflut running on the same host, communicating via lo. Real world performance with NICs in a network with
+more constrained MTU is expected to be quite a bit lower, likely in the neighbourhood of 200 - 300 Gbit/s.
+
 ## VNC
 
 With many VNC clients performance can degrade. Running a VNC multiplexer like [VNCmux](https://github.com/TobleMiner/vncmux/), even on the same host,
