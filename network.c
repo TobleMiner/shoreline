@@ -167,6 +167,23 @@ fail:
 	return err;
 }
 
+#define NET_STR_TO_UINT32_10(res_, ptr_, len_) { \
+	uint32_t val_ = 0; \
+	int radix; \
+	\
+	res_ = -1; \
+	for(radix = 0; radix < (len_); radix++) { \
+		char c = *(ptr_++); \
+		\
+		if (c == ' ' || c == '\r' || c == '\n') { \
+			(len_) -= radix + 1; \
+			(res_) = val_; \
+			break; \
+		} \
+		val_ = val_ * 10 + (c - '0'); \
+	} \
+}
+
 static int32_t net_str_to_uint32_10(char **ptr, size_t *max_len) {
 	uint32_t val = 0;
 	int radix;
@@ -186,6 +203,31 @@ static int32_t net_str_to_uint32_10(char **ptr, size_t *max_len) {
 }
 
 // Separate implementation to keep performance high
+#define NET_STR_TO_UINT32_16(res_, ptr_, len_) { \
+	uint32_t val_ = 0; \
+	int radix; \
+	\
+	res_ = -1; \
+	for(radix = 0; radix < (len_); radix++) { \
+		char c = *(ptr_++); \
+		char lower; \
+		\
+		if (c == '\n' || c == '\r' || c == '\n') { \
+			(len_) -= radix + 1; \
+			(res_) = val_; \
+			break; \
+		} \
+		/* Could be replaced by a left shift */ \
+		val_ *= 16; \
+		lower = c | 0x20; \
+		if(lower >= 'a') { \
+			val_ += lower - 'a' + 10; \
+		} else { \
+			val_ += lower - '0'; \
+		} \
+	} \
+}
+
 static int32_t net_str_to_uint32_16(char **ptr, ssize_t *max_len) {
 	uint32_t val = 0;
 	char c;
@@ -410,7 +452,7 @@ recv:
 				}
 				parse_ptr++;
 				parse_len--;
-				x = net_str_to_uint32_10(&parse_ptr, &parse_len);
+				NET_STR_TO_UINT32_10(x, parse_ptr, parse_len);
 				if (x < 0) {
 					debug_fprintf(stderr, "No parsable number after PX command\n");
 					if (parse_len > 10) {
@@ -424,7 +466,7 @@ recv:
 				if (!parse_len) {
 					goto recv_more;
 				}
-				y = net_str_to_uint32_10(&parse_ptr, &parse_len);
+				NET_STR_TO_UINT32_10(y, parse_ptr, parse_len);
 				if (y < 0) {
 					debug_fprintf(stderr, "No parsable Y coordinate after X coordinate\n");
 					if (parse_len > 10) {
@@ -457,7 +499,8 @@ recv:
 
 					parse_ptr++;
 					parse_len--;
-					val = net_str_to_uint32_16(&parse_ptr, &parse_len);
+					NET_STR_TO_UINT32_16(val, parse_ptr, parse_len);
+//					val = net_str_to_uint32_16(&parse_ptr, &parse_len);
 					if (val < 0) {
 						debug_fprintf(stderr, "No parsable color information\n");
 						if (parse_len > 10) {
